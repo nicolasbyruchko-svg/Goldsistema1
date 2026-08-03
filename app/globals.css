@@ -1,0 +1,135 @@
+@import "tailwindcss";
+
+/* ============================================
+   OROEPI - Design System
+   Paleta Azul Marinho + Amarelo Alerta
+   ============================================ */
+
+:root {
+  /* Brand Colors */
+  --navy-900: #0b2447;
+  --navy-800: #19376d;
+  --navy-700: #1e4080;
+  --navy-600: #2a52a0;
+
+  --yellow-primary: #ffd93d;
+  --yellow-secondary: #f4c430;
+  --yellow-hover: #f0b800;
+
+  /* Neutrals */
+  --gray-bg: #f3f4f6;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+
+  /* Semantic */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #3b82f6;
+
+  /* Layout */
+  --sidebar-width: 256px;
+}
+
+/* ============================================
+   Dashboard layout (sidebar responsiva)
+   ============================================ */
+.dashboard-main {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  background-color: var(--gray-bg);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: margin-left 0.25s ease;
+}
+
+@media (max-width: 1023px) {
+  .dashboard-main {
+    margin-left: 0;
+  }
+}
+
+@theme inline {
+  --color-background: var(--gray-bg);
+  --color-foreground: var(--gray-900);
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+/* ============================================
+   Base Reset
+   ============================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--gray-bg);
+  color: var(--gray-900);
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+/* ============================================
+   Scrollbar custom (sidebar)
+   ============================================ */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* ============================================
+   Animations
+   ============================================ */
+@keyframes dialogBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dialogContentIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 0.7s linear infinite;
+}

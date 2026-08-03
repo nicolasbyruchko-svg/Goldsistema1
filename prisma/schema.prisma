@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      String   @default("USER")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Project {
+  id             String     @id @default(cuid())
+  name           String
+  description    String?
+  costCenterCode String?
+  active         Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  workers        Worker[]
+  deliveries     Delivery[]
+  devolutions    Devolution[]
+}
+
+model Worker {
+  id         String     @id @default(cuid())
+  matricula  String     @unique
+  name       String
+  cpf        String     @unique
+  role          String
+  admissionDate DateTime?
+  active        Boolean    @default(true)
+  projectId  String?
+  project    Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  deliveries Delivery[]
+  devolutions Devolution[]
+}
+
+model Product {
+  id            String                @id @default(cuid())
+  name          String
+  sku           String                @unique
+  type          String // 'EPI' ou 'UNIFORM'
+  size          String?
+  caNumber      String?
+  caValidity    DateTime?
+  unitCost      Decimal?              @db.Decimal(10, 2)
+  supplier      String?
+  stockQuantity Int                   @default(0)
+  minStock      Int                   @default(5)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  deliveryItems DeliveryItem[]
+  purchaseItems PurchaseInvoiceItem[]
+  devolutionItems DevolutionItem[]
+}
+
+model Delivery {
+  id          String         @id @default(cuid())
+  workerId    String
+  worker      Worker         @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  projectId   String?
+  project     Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  status      String         @default("PENDING_SIGNATURE")
+  deliveredAt DateTime       @default(now())
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  items       DeliveryItem[]
+}
+
+model DeliveryItem {
+  id                 String   @id @default(cuid())
+  deliveryId         String
+  delivery           Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  productId          String
+  product            Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity           Int
+  reason             String   @default("FIRST_DELIVERY") // FIRST_DELIVERY, REPLACEMENT_WEAR, REPLACEMENT_LOSS
+  unitCostAtDelivery Decimal? @db.Decimal(10, 2)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model PurchaseInvoice {
+  id         String                @id @default(cuid())
+  nfNumber   String
+  supplier   String
+  issueDate  DateTime
+  totalValue Decimal               @db.Decimal(10, 2)
+  items      PurchaseInvoiceItem[]
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+}
+
+model PurchaseInvoiceItem {
+  id                String           @id @default(cuid())
+  purchaseInvoiceId String
+  purchaseInvoice   PurchaseInvoice  @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product          @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity          Int
+  unitCost          Decimal          @db.Decimal(10, 2)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
+
+model Devolution {
+  id         String            @id @default(cuid())
+  workerId   String
+  worker     Worker            @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  projectId  String?
+  project    Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  reason     String            @default("DISMISSAL")
+  devolvedAt DateTime          @default(now())
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  items      DevolutionItem[]
+}
+
+model DevolutionItem {
+  id           String      @id @default(cuid())
+  devolutionId String
+  devolution   Devolution  @relation(fields: [devolutionId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity     Int
+  condition    String      @default("GOOD")
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
