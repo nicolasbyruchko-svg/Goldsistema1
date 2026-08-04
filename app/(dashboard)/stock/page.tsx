@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { getProducts } from "@/actions/product-actions";
 import { NewProductButton } from "@/components/stock/new-product-button";
-import { EditProductButton } from "@/components/stock/edit-product-button";
-import { DeleteProductButton } from "@/components/stock/delete-product-button";
-import { Package, AlertTriangle, ShieldCheck, Shirt } from "lucide-react";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import { StockTable } from "@/components/stock/stock-table";
+import { Package, AlertTriangle } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Estoque",
@@ -98,98 +96,7 @@ export default async function StockPage() {
             <p style={{ fontSize: "13px", marginTop: "4px" }}>Clique em &quot;+ Novo Produto&quot; para começar.</p>
           </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
-              <thead>
-                <tr style={{ backgroundColor: "var(--gray-50)", borderBottom: "1px solid var(--gray-200)" }}>
-                  {["Produto", "SKU", "Tipo", "Condição", "Tamanho", "CA / Validade", "Custo Unit.", "Fornecedor", "Estoque", "Mín.", "Ações"].map((col) => (
-                    <th key={col} style={{ padding: "12px 20px", textAlign: "left", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.6px", textTransform: "uppercase", whiteSpace: "nowrap" }}>
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {products.map((product, idx) => {
-                  const isCritical = product.stockQuantity <= product.minStock;
-                  return (
-                    <tr key={product.id} style={{ borderBottom: idx < products.length - 1 ? "1px solid var(--gray-100)" : "none", backgroundColor: isCritical ? "#fffbeb" : "transparent" }}>
-                      <td style={{ padding: "14px 20px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                          <div style={{ width: "32px", height: "32px", borderRadius: "8px", backgroundColor: product.type === "EPI" ? "rgba(25,55,109,0.08)" : "#e0f2fe", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                            {product.type === "EPI"
-                              ? <ShieldCheck size={16} style={{ color: "var(--navy-800)" }} />
-                              : <Shirt size={16} style={{ color: "#0284c7" }} />
-                            }
-                          </div>
-                          <span style={{ fontWeight: 600, color: "var(--gray-900)" }}>{product.name}</span>
-                        </div>
-                      </td>
-                      <td style={{ padding: "14px 20px" }}>
-                        <span style={{ fontFamily: "monospace", fontSize: "12px", backgroundColor: "var(--gray-100)", padding: "2px 7px", borderRadius: "5px", color: "var(--gray-700)" }}>
-                          {product.sku}
-                        </span>
-                      </td>
-                       <td style={{ padding: "14px 20px" }}>
-                         <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 600, backgroundColor: product.type === "EPI" ? "rgba(25,55,109,0.08)" : "#e0f2fe", color: product.type === "EPI" ? "var(--navy-800)" : "#0284c7" }}>
-                           {product.type === "EPI" ? "EPI" : "Uniforme"}
-                         </span>
-                       </td>
-                       <td style={{ padding: "14px 20px" }}>
-                         <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 600, backgroundColor: product.condition === "NOVO" ? "#d1fae5" : "#e0f2fe", color: product.condition === "NOVO" ? "#059669" : "#0284c7" }}>
-                           {product.condition === "NOVO" ? "Novo" : "Higienizado"}
-                         </span>
-                       </td>
-                       <td style={{ padding: "14px 20px", color: "var(--gray-500)", fontSize: "13px" }}>
-                         {product.size || "—"}
-                       </td>
-                      <td style={{ padding: "14px 20px" }}>
-                        {product.caNumber ? (
-                          <div>
-                            <span style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "var(--gray-700)" }}>CA {product.caNumber}</span>
-                            <span style={{ display: "block", fontSize: "11px", color: product.caValidity && new Date(product.caValidity) < new Date() ? "#dc2626" : "var(--gray-400)" }}>
-                              {formatDate(product.caValidity)}
-                            </span>
-                          </div>
-                        ) : (
-                          <span style={{ color: "var(--gray-300)", fontSize: "13px" }}>—</span>
-                        )}
-                      </td>
-                      <td style={{ padding: "14px 20px" }}>
-                        <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-800)" }}>
-                          {product.unitCost != null ? formatCurrency(Number(product.unitCost)) : <span style={{ color: "var(--gray-300)", fontWeight: 400 }}>—</span>}
-                        </span>
-                      </td>
-                      <td style={{ padding: "14px 20px" }}>
-                        <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>
-                          {product.supplier || <span style={{ color: "var(--gray-300)" }}>—</span>}
-                        </span>
-                      </td>
-                      <td style={{ padding: "14px 20px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <span style={{ fontSize: "18px", fontWeight: 800, color: isCritical ? "#dc2626" : "#15803d" }}>
-                            {product.stockQuantity}
-                          </span>
-                          {isCritical && (
-                            <AlertTriangle size={14} style={{ color: "#f59e0b" }} strokeWidth={2.5} />
-                          )}
-                        </div>
-                      </td>
-                      <td style={{ padding: "14px 20px", color: "var(--gray-400)", fontSize: "13px" }}>
-                        {product.minStock}
-                      </td>
-                      <td style={{ padding: "14px 20px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <EditProductButton product={product} />
-                          <DeleteProductButton product={product} />
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <StockTable products={products} />
         )}
       </div>
     </div>
