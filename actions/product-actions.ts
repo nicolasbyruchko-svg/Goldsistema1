@@ -96,8 +96,8 @@ export async function deleteProduct(id: string) {
     revalidatePath("/dashboard");
     return { success: true as const };
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "";
-    if (msg.includes("Foreign key constraint failed") || msg.includes("P2003")) {
+    const code = (err as { code?: unknown })?.code;
+    if (code === "P2003") {
       return {
         success: false as const,
         error:
