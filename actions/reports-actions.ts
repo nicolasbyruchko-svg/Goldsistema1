@@ -84,9 +84,30 @@ const REASON_KEYS = ["FIRST_DELIVERY", "REPLACEMENT_WEAR", "REPLACEMENT_LOSS"];
 export async function getUsageReport(filters?: UsageReportFilters): Promise<UsageReport> {
   const now = new Date();
 
-  const whereItems: Record<string, unknown> = {};
+  const allProducts = await prisma.product.findMany({
+    where: { archived: false },
+    select: { id: true, name: true, size: true },
+    orderBy: { name: "asc" },
+  });
+
+  const allProjects = await prisma.project.findMany({
+    where: { active: true },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+
+  let matchedProductIds: string[] | undefined;
   if (filters?.productIds && filters.productIds.length > 0) {
-    whereItems.productId = { in: filters.productIds };
+    matchedProductIds = filters.productIds;
+  } else if (filters?.size) {
+    matchedProductIds = allProducts
+      .filter((p) => p.size === filters.size)
+      .map((p) => p.id);
+  }
+
+  const whereItems: Record<string, unknown> = {};
+  if (matchedProductIds && matchedProductIds.length > 0) {
+    whereItems.productId = { in: matchedProductIds };
   }
 
   const whereDelivery: Record<string, unknown> = { status: { not: "CANCELLED" } };
@@ -100,73 +121,47 @@ export async function getUsageReport(filters?: UsageReportFilters): Promise<Usag
     };
   }
 
-  const [deliveryItems, allProducts, allProjects] = await Promise.all([
-    prisma.deliveryItem.findMany({
-      where: {
-        delivery: whereDelivery,
-        ...whereItems,
-      },
-      include: {
-        product: { select: { id: true, name: true, size: true } },
-        delivery: {
-          select: {
-            deliveredAt: true,
-            worker: { select: { name: true, matricula: true } },
-            project: { select: { id: true, name: true } },
-          },
+  const deliveryItems = await prisma.deliveryItem.findMany({
+    where: {
+      delivery: whereDelivery,
+      ...whereItems,
+    },
+    include: {
+      product: { select: { id: true, name: true, size: true } },
+      delivery: {
+        select: {
+          deliveredAt: true,
+          worker: { select: { name: true, matricula: true } },
+          project: { select: { id: true, name: true } },
         },
       },
-      orderBy: { delivery: { deliveredAt: "desc" } },
-    }),
-    prisma.product.findMany({
-      where: { archived: false },
-      select: { id: true, name: true, size: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.project.findMany({
-      where: { active: true },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    }),
-  ]);
+    },
+    orderBy: { delivery: { deliveredAt: "desc" } },
+  });
 
   const sizeSet = new Set<string>();
-  const productSizeMap = new Map<string, Set<string>>();
 
-  const rows: UsageReportRow[] = deliveryItems
-    .filter((item) => {
-      if (filters?.size) {
-        const itemSize = item.product.size ?? "";
-        if (itemSize !== filters.size) return false;
-      }
-      return true;
-    })
-    .map((item) => {
-      const unitCost = item.unitCostAtDelivery != null ? Number(item.unitCostAtDelivery) : 0;
-      const size = item.product.size;
-      if (size) {
-        sizeSet.add(size);
-        const key = item.product.id;
-        if (!productSizeMap.has(key)) productSizeMap.set(key, new Set());
-        productSizeMap.get(key)!.add(size);
-      }
-      return {
-        id: item.id,
-        date: item.delivery.deliveredAt,
-        workerName: item.delivery.worker.name,
-        workerMatricula: item.delivery.worker.matricula,
-        projectName: item.delivery.project?.name ?? "Sem contrato",
-        productName: item.product.name,
-        productSize: size,
-        quantity: item.quantity,
-        unitCost,
-        total: unitCost * item.quantity,
-        reason: item.reason,
-      };
-    });
+  const rows: UsageReportRow[] = deliveryItems.map((item) => {
+    const unitCost = item.unitCostAtDelivery != null ? Number(item.unitCostAtDelivery) : 0;
+    const size = item.product.size;
+    if (size) sizeSet.add(size);
+    return {
+      id: item.id,
+      date: item.delivery.deliveredAt,
+      workerName: item.delivery.worker.name,
+      workerMatricula: item.delivery.worker.matricula,
+      projectName: item.delivery.project?.name ?? "Sem contrato",
+      productName: item.product.name,
+      productSize: size,
+      quantity: item.quantity,
+      unitCost,
+      total: unitCost * item.quantity,
+      reason: item.reason,
+    };
+  });
 
   const filteredProducts = filters?.size
-    ? allProducts.filter((p) => productSizeMap.get(p.id)?.has(filters.size!))
+    ? allProducts.filter((p) => p.size === filters.size)
     : allProducts;
 
   const totalItems = rows.reduce((s, r) => s + r.quantity, 0);
