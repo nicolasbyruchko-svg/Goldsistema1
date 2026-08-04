@@ -17,6 +17,8 @@ export default async function StockPage() {
   const epis = products.filter((p) => p.type === "EPI");
   const uniforms = products.filter((p) => p.type === "UNIFORM");
   const lowStock = products.filter((p) => p.stockQuantity <= p.minStock);
+  const newItems = products.filter((p) => p.condition === "NOVO");
+  const sanitizedItems = products.filter((p) => p.condition === "HIGIENIZADO");
 
   return (
     <div style={{ padding: "32px 40px", flex: 1 }}>
@@ -66,11 +68,13 @@ export default async function StockPage() {
       )}
 
       {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px", marginBottom: "28px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "16px", marginBottom: "28px" }}>
         {[
           { label: "Total de Itens", value: products.length, color: "#7c3aed", bg: "#ede9fe" },
           { label: "EPIs", value: epis.length, color: "var(--navy-800)", bg: "rgba(25,55,109,0.07)" },
           { label: "Uniformes", value: uniforms.length, color: "#0284c7", bg: "#e0f2fe" },
+          { label: "Novos", value: newItems.length, color: "#059669", bg: "#d1fae5" },
+          { label: "Higienizados", value: sanitizedItems.length, color: "#0284c7", bg: "#e0f2fe" },
           { label: "Estoque Crítico", value: lowStock.length, color: "#dc2626", bg: "#fee2e2" },
         ].map((s) => (
           <div key={s.label} style={{ backgroundColor: "#fff", borderRadius: "12px", padding: "20px 24px", boxShadow: "0 1px 3px rgba(0,0,0,0.07)", border: "1px solid var(--gray-200)" }}>
@@ -98,7 +102,7 @@ export default async function StockPage() {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
               <thead>
                 <tr style={{ backgroundColor: "var(--gray-50)", borderBottom: "1px solid var(--gray-200)" }}>
-                  {["Produto", "SKU", "Tipo", "Tamanho", "CA / Validade", "Custo Unit.", "Fornecedor", "Estoque", "Mín.", "Ações"].map((col) => (
+                  {["Produto", "SKU", "Tipo", "Condição", "Tamanho", "CA / Validade", "Custo Unit.", "Fornecedor", "Estoque", "Mín.", "Ações"].map((col) => (
                     <th key={col} style={{ padding: "12px 20px", textAlign: "left", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.6px", textTransform: "uppercase", whiteSpace: "nowrap" }}>
                       {col}
                     </th>
@@ -126,14 +130,19 @@ export default async function StockPage() {
                           {product.sku}
                         </span>
                       </td>
-                      <td style={{ padding: "14px 20px" }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 600, backgroundColor: product.type === "EPI" ? "rgba(25,55,109,0.08)" : "#e0f2fe", color: product.type === "EPI" ? "var(--navy-800)" : "#0284c7" }}>
-                          {product.type === "EPI" ? "EPI" : "Uniforme"}
-                        </span>
-                      </td>
-                      <td style={{ padding: "14px 20px", color: "var(--gray-500)", fontSize: "13px" }}>
-                        {product.size || "—"}
-                      </td>
+                       <td style={{ padding: "14px 20px" }}>
+                         <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 600, backgroundColor: product.type === "EPI" ? "rgba(25,55,109,0.08)" : "#e0f2fe", color: product.type === "EPI" ? "var(--navy-800)" : "#0284c7" }}>
+                           {product.type === "EPI" ? "EPI" : "Uniforme"}
+                         </span>
+                       </td>
+                       <td style={{ padding: "14px 20px" }}>
+                         <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 600, backgroundColor: product.condition === "NOVO" ? "#d1fae5" : "#e0f2fe", color: product.condition === "NOVO" ? "#059669" : "#0284c7" }}>
+                           {product.condition === "NOVO" ? "Novo" : "Higienizado"}
+                         </span>
+                       </td>
+                       <td style={{ padding: "14px 20px", color: "var(--gray-500)", fontSize: "13px" }}>
+                         {product.size || "—"}
+                       </td>
                       <td style={{ padding: "14px 20px" }}>
                         {product.caNumber ? (
                           <div>

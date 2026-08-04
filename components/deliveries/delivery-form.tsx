@@ -164,18 +164,18 @@ export function DeliveryForm({ workers, products, onSuccess, onCancel }: Deliver
                     name={`items.${idx}.productId`}
                     control={control}
                     render={({ field: f }) => (
-                      <Select
-                        id={`item-${idx}-product`}
-                        error={errors.items?.[idx]?.productId?.message}
-                        {...f}
-                      >
-                        <option value="">— Selecione —</option>
-                        {availableProducts.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} {p.size ? `(${p.size})` : ""} — Est: {p.stockQuantity}
-                          </option>
-                        ))}
-                      </Select>
+                       <Select
+                         id={`item-${idx}-product`}
+                         error={errors.items?.[idx]?.productId?.message}
+                         {...f}
+                       >
+                         <option value="">— Selecione —</option>
+                         {availableProducts.map((p) => (
+                           <option key={p.id} value={p.id}>
+                             {p.name} {p.size ? `(${p.size})` : ""} — {p.condition === "NOVO" ? "Novo" : "Hig."} — Est: {p.stockQuantity}
+                           </option>
+                         ))}
+                       </Select>
                     )}
                   />
                   <FieldError message={errors.items?.[idx]?.productId?.message} />

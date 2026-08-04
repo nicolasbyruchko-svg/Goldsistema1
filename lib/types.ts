@@ -11,6 +11,7 @@ export type SerializableProduct = {
   name: string;
   sku: string;
   type: string;
+  condition: string;
   size: string | null;
   caNumber: string | null;
   caValidity: Date | null;

@@ -49,6 +49,7 @@ model Product {
   name          String
   sku           String                @unique
   type          String // 'EPI' ou 'UNIFORM'
+  condition     String                @default("NOVO") // 'NOVO' ou 'HIGIENIZADO'
   size          String?
   caNumber      String?
   caValidity    DateTime?

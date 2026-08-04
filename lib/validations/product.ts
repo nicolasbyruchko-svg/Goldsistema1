@@ -12,9 +12,12 @@ export const productSchema = z.object({
   type: z.enum(["EPI", "UNIFORM"], {
     required_error: "Selecione o tipo",
   }),
+  condition: z.enum(["NOVO", "HIGIENIZADO"], {
+    required_error: "Selecione a condição",
+  }),
   size: z.string().max(20).optional(),
   caNumber: z.string().max(20).optional(),
-  caValidity: z.string().optional(), // ISO date string, converted to Date on server
+  caValidity: z.string().optional(),
   unitCost: z
     .number({ invalid_type_error: "Informe o custo unitário" })
     .min(0, "Custo unitário não pode ser negativo")
