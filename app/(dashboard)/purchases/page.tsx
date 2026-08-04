@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { getPurchases } from "@/actions/purchase-actions";
 import { getProducts } from "@/actions/product-actions";
 import { NewPurchaseButton } from "@/components/purchases/new-purchase-button";
-import { ReceiptText, FileText, Building2, CalendarDays } from "lucide-react";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import { PurchasesTable } from "@/components/purchases/purchases-table";
+import { ReceiptText } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Compras",
@@ -71,62 +72,7 @@ export default async function PurchasesPage() {
             <p style={{ fontSize: "13px", marginTop: "4px" }}>Clique em &quot;+ Nova Nota Fiscal&quot; para registrar a primeira entrada.</p>
           </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
-              <thead>
-                <tr style={{ backgroundColor: "var(--gray-50)", borderBottom: "1px solid var(--gray-200)" }}>
-                  {["NF", "Fornecedor", "Data de Emissão", "Itens", "Valor Total"].map((col) => (
-                    <th key={col} style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.6px", textTransform: "uppercase", whiteSpace: "nowrap" }}>
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {purchases.map((invoice, idx) => (
-                  <tr key={invoice.id} style={{ borderBottom: idx < purchases.length - 1 ? "1px solid var(--gray-100)" : "none" }}>
-                    <td style={{ padding: "14px 24px" }}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontWeight: 700, color: "var(--navy-900)", fontFamily: "monospace", fontSize: "13px" }}>
-                        <FileText size={13} style={{ color: "#0284c7" }} />
-                        {invoice.nfNumber}
-                      </span>
-                    </td>
-                    <td style={{ padding: "14px 24px" }}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "var(--gray-800)" }}>
-                        <Building2 size={13} style={{ color: "var(--gray-400)" }} />
-                        {invoice.supplier}
-                      </span>
-                    </td>
-                    <td style={{ padding: "14px 24px" }}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "var(--gray-600)", fontSize: "13px" }}>
-                        <CalendarDays size={13} style={{ color: "var(--gray-400)" }} />
-                        {formatDate(invoice.issueDate)}
-                      </span>
-                    </td>
-                    <td style={{ padding: "14px 24px" }}>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                        {invoice.items.slice(0, 2).map((item) => (
-                          <span key={item.id} style={{ fontSize: "12px", color: "var(--gray-600)" }}>
-                            {item.quantity}× {item.product.name} — {formatCurrency(Number(item.unitCost))}
-                          </span>
-                        ))}
-                        {invoice.items.length > 2 && (
-                          <span style={{ fontSize: "11px", color: "var(--gray-400)" }}>
-                            +{invoice.items.length - 2} item(s)
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ padding: "14px 24px" }}>
-                      <span style={{ fontSize: "15px", fontWeight: 800, color: "#059669" }}>
-                        {formatCurrency(Number(invoice.totalValue))}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <PurchasesTable purchases={purchases} />
         )}
       </div>
     </div>

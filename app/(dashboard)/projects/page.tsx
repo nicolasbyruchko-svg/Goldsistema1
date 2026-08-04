@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { getProjects } from "@/actions/project-actions";
 import { NewProjectButton } from "@/components/projects/new-project-button";
-import { EditProjectButton } from "@/components/projects/edit-project-button";
-import { FolderKanban, Users, CheckCircle2, XCircle } from "lucide-react";
+import { ProjectsTable } from "@/components/projects/projects-table";
+import { FolderKanban } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Contratos",
@@ -63,65 +63,7 @@ export default async function ProjectsPage() {
             <p style={{ fontSize: "13px", marginTop: "4px" }}>Clique em &quot;+ Novo Contrato&quot; para começar.</p>
           </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
-              <thead>
-                <tr style={{ backgroundColor: "var(--gray-50)", borderBottom: "1px solid var(--gray-200)" }}>
-                  {["Nome do Contrato", "C.Custo", "Descrição", "Trabalhadores", "Entregas", "Status", "Ações"].map((col) => (
-                    <th key={col} style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", fontWeight: 600, color: "var(--gray-500)", letterSpacing: "0.6px", textTransform: "uppercase", whiteSpace: "nowrap" }}>
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {projects.map((project, idx) => (
-                  <tr key={project.id} style={{ borderBottom: idx < projects.length - 1 ? "1px solid var(--gray-100)" : "none" }}>
-                    <td style={{ padding: "14px 24px" }}>
-                      <span style={{ fontWeight: 600, color: "var(--gray-900)" }}>{project.name}</span>
-                    </td>
-                    <td style={{ padding: "14px 24px" }}>
-                      {project.costCenterCode ? (
-                        <span style={{ fontFamily: "monospace", fontSize: "12px", backgroundColor: "var(--gray-100)", padding: "2px 7px", borderRadius: "5px", color: "var(--navy-800)" }}>
-                          {project.costCenterCode}
-                        </span>
-                      ) : (
-                        <span style={{ color: "var(--gray-300)", fontSize: "13px" }}>—</span>
-                      )}
-                    </td>
-                    <td style={{ padding: "14px 24px", color: "var(--gray-500)", maxWidth: "260px" }}>
-                      <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {project.description || <em style={{ color: "var(--gray-300)" }}>—</em>}
-                      </span>
-                    </td>
-                    <td style={{ padding: "14px 24px" }}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "13px", fontWeight: 600, color: "var(--navy-800)" }}>
-                        <Users size={14} />
-                        {project._count.workers}
-                      </span>
-                    </td>
-                    <td style={{ padding: "14px 24px", color: "var(--gray-600)", fontSize: "13px" }}>
-                      {project._count.deliveries}
-                    </td>
-                    <td style={{ padding: "14px 24px" }}>
-                      {project.active ? (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 600, backgroundColor: "#dcfce7", color: "#15803d" }}>
-                          <CheckCircle2 size={12} /> Ativo
-                        </span>
-                      ) : (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 600, backgroundColor: "#fee2e2", color: "#dc2626" }}>
-                          <XCircle size={12} /> Inativo
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ padding: "14px 24px" }}>
-                      <EditProjectButton project={project} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ProjectsTable projects={projects} />
         )}
       </div>
     </div>
