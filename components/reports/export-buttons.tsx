@@ -5,6 +5,7 @@ import { PDFDocument, StandardFonts, rgb, type PDFPage, type PDFFont } from "pdf
 import { Download, FileDown, Loader2 } from "lucide-react";
 import type { SpendingReport, SpendingRow } from "@/actions/reports-actions";
 import { formatCurrency } from "@/lib/utils";
+import { embedLogo } from "@/lib/pdf/logo";
 
 const PAGE_W = 792;
 const PAGE_H = 612;
@@ -119,10 +120,15 @@ async function buildPdf(report: SpendingReport): Promise<Uint8Array> {
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
 
+  const logoImage = await embedLogo(doc);
+
   const page = doc.addPage([PAGE_W, PAGE_H]);
   let y = PAGE_H - 50;
 
-  page.drawText("Relatório de Gastos", { x: MARGIN, y, size: 18, font: boldFont, color: rgb(0.1, 0.2, 0.4) });
+  const logoW = 140;
+  const logoH = (logoImage.height / logoImage.width) * logoW;
+  page.drawImage(logoImage, { x: MARGIN, y: y - logoH + 10, width: logoW, height: logoH });
+
   y -= 22;
 
   const summary = `Gasto Total: ${formatCurrency(report.totals.totalSpent)}   |   Período: ${formatCurrency(report.totals.periodSpent)}   |   Itens: ${report.totals.totalItems}   |   Entregas: ${report.totals.totalDeliveries}`;
