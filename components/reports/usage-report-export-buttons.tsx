@@ -62,23 +62,23 @@ function downloadBlob(content: BlobPart, filename: string, mime: string) {
 
 const COLS = [
   { label: "DATA", x: MARGIN },
-  { label: "COLABORADOR", x: MARGIN + 55 },
-  { label: "CONTRATO", x: MARGIN + 160 },
-  { label: "PEÇA", x: MARGIN + 260 },
-  { label: "TAM.", x: MARGIN + 360 },
-  { label: "QTD", x: MARGIN + 395 },
-  { label: "CUSTO UNIT.", x: MARGIN + 425 },
-  { label: "TOTAL", x: MARGIN + 490 },
-  { label: "MOTIVO", x: MARGIN + 540 },
+  { label: "COLABORADOR", x: MARGIN + 52 },
+  { label: "CONTRATO", x: MARGIN + 152 },
+  { label: "PEÇA", x: MARGIN + 242 },
+  { label: "TAM.", x: MARGIN + 332 },
+  { label: "QTD", x: MARGIN + 367 },
+  { label: "CUSTO UNIT.", x: MARGIN + 397 },
+  { label: "TOTAL", x: MARGIN + 462 },
+  { label: "MOTIVO", x: MARGIN + 510 },
 ];
 
 function drawTableHead(page: PDFPage, font: PDFFont, y: number): number {
   for (const c of COLS) {
     page.drawText(c.label, { x: c.x, y, size: 7, font, color: rgb(0.4, 0.4, 0.4) });
   }
-  y -= 8;
+  y -= 10;
   page.drawLine({ start: { x: MARGIN, y }, end: { x: PAGE_W - MARGIN, y }, thickness: 0.5, color: rgb(0.75, 0.75, 0.75) });
-  return y - 6;
+  return y - 10;
 }
 
 function trunc(text: string, max: number): string {
