@@ -9,7 +9,8 @@ import { formatCurrency, formatReason } from "@/lib/utils";
 const PAGE_W = 612;
 const PAGE_H = 792;
 const MARGIN = 40;
-const BOTTOM_MARGIN = 60;
+const ROW_H = 16;
+const BOTTOM_BREAK = 80;
 
 function csvCell(value: string | number): string {
   const str = String(value);
@@ -76,86 +77,85 @@ function buildFilterSummary(report: UsageReport): string {
   return parts.length > 0 ? parts.join("  |  ") : "Sem filtros aplicados";
 }
 
-function drawTableHeader(
-  page: PDFPage,
-  font: PDFFont,
-  cols: { label: string; x: number }[],
-  y: number
-): number {
-  for (const col of cols) {
-    page.drawText(col.label, { x: col.x, y, size: 8, font, color: rgb(0.4, 0.4, 0.4) });
+const COLS = [
+  { label: "DATA", x: MARGIN, w: 55 },
+  { label: "COLABORADOR", x: MARGIN + 55, w: 105 },
+  { label: "CONTRATO", x: MARGIN + 160, w: 95 },
+  { label: "PEÇA", x: MARGIN + 255, w: 100 },
+  { label: "TAM.", x: MARGIN + 355, w: 35 },
+  { label: "QTD", x: MARGIN + 390, w: 30 },
+  { label: "CUSTO UNIT.", x: MARGIN + 420, w: 60 },
+  { label: "TOTAL", x: MARGIN + 480, w: 55 },
+  { label: "MOTIVO", x: MARGIN + 535, w: 37 },
+];
+
+function drawHeader(page: PDFPage, font: PDFFont, y: number): number {
+  for (const col of COLS) {
+    page.drawText(col.label, { x: col.x, y, size: 7, font, color: rgb(0.4, 0.4, 0.4) });
   }
-  y -= 6;
+  y -= 8;
   page.drawLine({
     start: { x: MARGIN, y },
     end: { x: PAGE_W - MARGIN, y },
     thickness: 0.5,
     color: rgb(0.8, 0.8, 0.8),
   });
-  return y - 10;
+  return y - 8;
 }
 
-function ensurePage(doc: PDFDocument, font: PDFFont, y: number, cols: { label: string; x: number }[]): { page: PDFPage; y: number } {
-  if (y > BOTTOM_MARGIN) return { page: doc.getPages()[doc.getPageCount() - 1], y };
+function drawRow(page: PDFPage, font: PDFFont, row: UsageReport["rows"][number], y: number): number {
+  const dateStr = new Date(row.date).toLocaleDateString("pt-BR");
+  const sizeStr = row.productSize || "Único";
+  const reasonStr = formatReason(row.reason);
+
+  page.drawText(dateStr, { x: COLS[0].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
+  page.drawText(truncate(row.workerName, 18), { x: COLS[1].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
+  page.drawText(truncate(row.projectName, 16), { x: COLS[2].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
+  page.drawText(truncate(row.productName, 17), { x: COLS[3].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
+  page.drawText(sizeStr, { x: COLS[4].x, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) });
+  page.drawText(String(row.quantity), { x: COLS[5].x, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) });
+  page.drawText(formatCurrency(row.unitCost), { x: COLS[6].x, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) });
+  page.drawText(formatCurrency(row.total), { x: COLS[7].x, y, size: 8, font, color: rgb(0.05, 0.4, 0.25) });
+  page.drawText(truncate(reasonStr, 6), { x: COLS[8].x, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) });
+
+  return y - ROW_H;
+}
+
+function truncate(text: string, maxChars: number): string {
+  return text.length > maxChars ? text.slice(0, maxChars - 1) + "…" : text;
+}
+
+function newPage(doc: PDFDocument, font: PDFFont): { page: PDFPage; y: number } {
   const page = doc.addPage([PAGE_W, PAGE_H]);
-  const newY = drawTableHeader(page, font, cols, PAGE_H - 50);
-  return { page, y: newY };
+  const y = drawHeader(page, font, PAGE_H - 50);
+  return { page, y };
 }
 
 async function buildPdf(report: UsageReport): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
-  const page = doc.addPage([PAGE_W, PAGE_H]);
+  let { page: currentPage, y } = newPage(doc, font);
 
-  page.drawText("Relatório de Uso — EPIs e Uniformes", { x: MARGIN, y: PAGE_H - 45, size: 16, font: boldFont, color: rgb(0.1, 0.2, 0.4) });
-  page.drawText(`Gerado em: ${report.generatedAt.toLocaleString("pt-BR")}`, { x: MARGIN, y: PAGE_H - 63, size: 10, font, color: rgb(0.35, 0.35, 0.35) });
+  currentPage.drawText("Relatório de Uso — EPIs e Uniformes", { x: MARGIN, y: PAGE_H - 40, size: 16, font: boldFont, color: rgb(0.1, 0.2, 0.4) });
+  currentPage.drawText(`Gerado em: ${report.generatedAt.toLocaleString("pt-BR")}`, { x: MARGIN, y: PAGE_H - 56, size: 10, font, color: rgb(0.35, 0.35, 0.35) });
 
   const filterText = buildFilterSummary(report);
-  page.drawText(filterText, { x: MARGIN, y: PAGE_H - 78, size: 9, font, color: rgb(0.45, 0.45, 0.45) });
+  currentPage.drawText(filterText, { x: MARGIN, y: PAGE_H - 70, size: 9, font, color: rgb(0.45, 0.45, 0.45) });
 
   const summary = `Registros: ${report.totals.totalRows}  |  Itens: ${report.totals.totalItems}  |  Gasto Total: ${formatCurrency(report.totals.totalSpent)}`;
-  page.drawText(summary, { x: MARGIN, y: PAGE_H - 93, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
+  currentPage.drawText(summary, { x: MARGIN, y: PAGE_H - 84, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
 
-  const cols = [
-    { label: "DATA", x: MARGIN },
-    { label: "COLABORADOR", x: MARGIN + 55 },
-    { label: "CONTRATO", x: MARGIN + 160 },
-    { label: "PEÇA", x: MARGIN + 255 },
-    { label: "TAM.", x: MARGIN + 350 },
-    { label: "QTD", x: MARGIN + 385 },
-    { label: "CUSTO UNIT.", x: MARGIN + 415 },
-    { label: "TOTAL", x: MARGIN + 485 },
-    { label: "MOTIVO", x: MARGIN + 530 },
-  ];
-
-  let y = PAGE_H - 125;
-  let currentPage = page;
-  y = drawTableHeader(currentPage, font, cols, y);
-  y -= 10;
+  y = PAGE_H - 110;
+  y = drawHeader(currentPage, font, y);
 
   for (const row of report.rows) {
-    const check = ensurePage(doc, font, y, cols);
-    if (check.page !== currentPage) {
-      currentPage = check.page;
-      y = check.y;
+    if (y < BOTTOM_BREAK) {
+      const np = newPage(doc, font);
+      currentPage = np.page;
+      y = np.y;
     }
-
-    const dateStr = new Date(row.date).toLocaleDateString("pt-BR");
-    const sizeStr = row.productSize || "Único";
-    const reasonStr = formatReason(row.reason);
-
-    currentPage.drawText(dateStr, { x: cols[0].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
-    currentPage.drawText(row.workerName, { x: cols[1].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
-    currentPage.drawText(row.projectName, { x: cols[2].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
-    currentPage.drawText(row.productName, { x: cols[3].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
-    currentPage.drawText(sizeStr, { x: cols[4].x, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) });
-    currentPage.drawText(String(row.quantity), { x: cols[5].x, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) });
-    currentPage.drawText(formatCurrency(row.unitCost), { x: cols[6].x, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) });
-    currentPage.drawText(formatCurrency(row.total), { x: cols[7].x, y, size: 8, font, color: rgb(0.05, 0.4, 0.25) });
-    currentPage.drawText(reasonStr, { x: cols[8].x, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) });
-
-    y -= 14;
+    y = drawRow(currentPage, font, row, y);
   }
 
   return doc.save();
