@@ -4,6 +4,7 @@ import { getSpendingReport, getUsageReport } from "@/actions/reports-actions";
 import { ReportExportButtons } from "@/components/reports/export-buttons";
 import { PeriodSpendCard } from "@/components/reports/period-spend-card";
 import { UsageReportFilters } from "@/components/reports/usage-report-filters";
+import { UsageReportExportButtons } from "@/components/reports/usage-report-export-buttons";
 import { BarChart3, TrendingUp, Package, ClipboardList, Building2, User, Tag, ClipboardCheck, AlertTriangle } from "lucide-react";
 import { formatCurrency, formatNumber, formatDate, formatReason } from "@/lib/utils";
 
@@ -198,13 +199,16 @@ export default async function ReportsPage({
 
       {/* Relatório de Uso */}
       <div style={{ marginTop: "32px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-          <div style={{ width: "36px", height: "36px", borderRadius: "9px", backgroundColor: "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <ClipboardCheck size={18} style={{ color: "#d97706" }} />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", marginBottom: "16px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{ width: "36px", height: "36px", borderRadius: "9px", backgroundColor: "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <ClipboardCheck size={18} style={{ color: "#d97706" }} />
+            </div>
+            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "var(--navy-900)", margin: 0 }}>
+              Relatório de Uso
+            </h2>
           </div>
-          <h2 style={{ fontSize: "18px", fontWeight: 700, color: "var(--navy-900)", margin: 0 }}>
-            Relatório de Uso
-          </h2>
+          <UsageReportExportButtons report={usageReport} />
         </div>
 
         <UsageReportFilters
