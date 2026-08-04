@@ -20,11 +20,6 @@ interface Piece {
   hasCritical: boolean;
 }
 
-const CONDITION_COLORS: Record<string, { fill: string; label: string }> = {
-  NOVO: { fill: "#059669", label: "Novo" },
-  HIGIENIZADO: { fill: "#0284c7", label: "Higienizado" },
-};
-
 const SIZE_PALETTE = [
   "#059669", "#0284c7", "#8b5cf6", "#f59e0b", "#ef4444",
   "#06b6d4", "#84cc16", "#f97316", "#ec4899", "#6366f1",
@@ -90,18 +85,22 @@ function Legend({ items }: { items: { label: string; value: number; color: strin
 }
 
 function PieceCharts({ piece }: { piece: Piece }) {
-  const conditionData = useMemo(() => {
-    const items = [
-      { label: "Novo", value: piece.novoCount, color: CONDITION_COLORS.NOVO.fill },
-      { label: "Higienizado", value: piece.higienizadoCount, color: CONDITION_COLORS.HIGIENIZADO.fill },
-    ].filter((d) => d.value > 0);
+  const novoSizeData = useMemo(() => {
+    const bySize = new Map<string, number>();
+    for (const v of piece.variants.filter((v) => v.condition === "NOVO")) {
+      const key = v.size || "Único";
+      bySize.set(key, (bySize.get(key) || 0) + v.stockQuantity);
+    }
+    const items = Array.from(bySize.entries())
+      .map(([label, value], i) => ({ label, value, color: SIZE_PALETTE[i % SIZE_PALETTE.length] }))
+      .sort((a, b) => b.value - a.value);
     const total = items.reduce((s, d) => s + d.value, 0);
     return items.map((d) => ({ ...d, pct: total > 0 ? Math.round((d.value / total) * 100) : 0 }));
   }, [piece]);
 
-  const sizeData = useMemo(() => {
+  const higSizeData = useMemo(() => {
     const bySize = new Map<string, number>();
-    for (const v of piece.variants) {
+    for (const v of piece.variants.filter((v) => v.condition === "HIGIENIZADO")) {
       const key = v.size || "Único";
       bySize.set(key, (bySize.get(key) || 0) + v.stockQuantity);
     }
@@ -151,19 +150,37 @@ function PieceCharts({ piece }: { piece: Piece }) {
       </div>
 
       <div style={{ padding: "14px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
-          <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-            Condição
-          </span>
-          <PieChart data={conditionData} size={90} />
-          <Legend items={conditionData} />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ width: "8px", height: "8px", borderRadius: "2px", backgroundColor: "#059669" }} />
+            <span style={{ fontSize: "11px", fontWeight: 700, color: "#059669", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              Novos ({piece.novoCount})
+            </span>
+          </div>
+          {novoSizeData.length === 0 ? (
+            <span style={{ fontSize: "11px", color: "var(--gray-400)", padding: "20px 0" }}>Sem itens novos</span>
+          ) : (
+            <>
+              <PieChart data={novoSizeData} size={90} />
+              <Legend items={novoSizeData} />
+            </>
+          )}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
-          <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-            Tamanhos
-          </span>
-          <PieChart data={sizeData} size={90} />
-          <Legend items={sizeData} />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ width: "8px", height: "8px", borderRadius: "2px", backgroundColor: "#0284c7" }} />
+            <span style={{ fontSize: "11px", fontWeight: 700, color: "#0284c7", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              Higienizados ({piece.higienizadoCount})
+            </span>
+          </div>
+          {higSizeData.length === 0 ? (
+            <span style={{ fontSize: "11px", color: "var(--gray-400)", padding: "20px 0" }}>Sem itens higienizados</span>
+          ) : (
+            <>
+              <PieChart data={higSizeData} size={90} />
+              <Legend items={higSizeData} />
+            </>
+          )}
         </div>
       </div>
     </div>
