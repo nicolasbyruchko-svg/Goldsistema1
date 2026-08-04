@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import {
-  Users,
   Package,
   ClipboardList,
-  FolderKanban,
   AlertTriangle,
   Clock,
   ArrowRight,
@@ -49,10 +47,8 @@ function StatusBadge({ status }: { status: string }) {
 
 export default async function DashboardPage() {
   // Busca todos os dados do dashboard em paralelo
-  const [workersCount, projectsCount, deliveriesCount, products, recentDeliveries, spending] =
+  const [deliveriesCount, products, recentDeliveries, spending] =
     await Promise.all([
-      prisma.worker.count({ where: { active: true } }),
-      prisma.project.count({ where: { active: true } }),
       prisma.delivery.count(),
       prisma.product.findMany({ where: { archived: false }, orderBy: { name: "asc" } }),
       prisma.delivery.findMany({
@@ -66,8 +62,6 @@ export default async function DashboardPage() {
       }),
       getSpendingReport(),
     ]);
-
-  const totalStockItems = products.reduce((acc, p) => acc + p.stockQuantity, 0);
 
   const stockByPiece = products.reduce<Record<string, (typeof products)[number][]>>((acc, p) => {
     (acc[p.name] ??= []).push(p);
@@ -87,32 +81,11 @@ export default async function DashboardPage() {
 
   const statsCards = [
     {
-      label: "Trabalhadores Ativos",
-      value: workersCount.toString(),
-      icon: Users,
-      color: "var(--navy-800)",
-      bg: "rgba(25, 55, 109, 0.08)",
-    },
-    {
-      label: "Contratos em Andamento",
-      value: projectsCount.toString(),
-      icon: FolderKanban,
-      color: "#0284c7",
-      bg: "#e0f2fe",
-    },
-    {
       label: "Total de Entregas",
       value: deliveriesCount.toString(),
       icon: ClipboardList,
       color: "#059669",
       bg: "#d1fae5",
-    },
-    {
-      label: "Itens no Estoque",
-      value: totalStockItems.toString(),
-      icon: Package,
-      color: "#7c3aed",
-      bg: "#ede9fe",
     },
     {
       label: "Gasto Total (EPI/Uniforme)",
