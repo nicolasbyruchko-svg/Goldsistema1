@@ -451,105 +451,6 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* Últimas Entregas */}
-        <div
-          style={{
-            backgroundColor: "#ffffff",
-            borderRadius: "14px",
-            border: "1px solid var(--gray-200)",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              padding: "20px 24px",
-              borderBottom: "1px solid var(--gray-200)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <Clock size={18} style={{ color: "var(--navy-800)" }} />
-              <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--navy-900)", margin: 0 }}>
-                Últimas Entregas
-              </h2>
-            </div>
-            <Link
-              href="/deliveries"
-              style={{
-                fontSize: "13px",
-                fontWeight: 600,
-                color: "#0284c7",
-                textDecoration: "none",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-              }}
-            >
-              Ver todas <ArrowRight size={14} />
-            </Link>
-          </div>
-
-          <div style={{ padding: "0 24px" }}>
-            {recentDeliveries.length === 0 ? (
-              <div style={{ padding: "40px 0", textAlign: "center", color: "var(--gray-400)" }}>
-                <p style={{ fontSize: "14px", margin: 0 }}>Nenhuma entrega registrada ainda.</p>
-              </div>
-            ) : (
-              recentDeliveries.map((delivery, idx) => (
-                <div
-                  key={delivery.id}
-                  style={{
-                    padding: "20px 0",
-                    borderBottom: idx < recentDeliveries.length - 1 ? "1px solid var(--gray-100)" : "none",
-                    display: "flex",
-                    alignItems: "flex-start",
-                    justifyContent: "space-between",
-                    gap: "16px",
-                  }}
-                >
-                  <div>
-                    <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--gray-900)", margin: "0 0 4px 0" }}>
-                      {delivery.worker.name}{" "}
-                      <span style={{ fontSize: "13px", fontWeight: 400, color: "var(--gray-500)" }}>
-                        (Mat: {delivery.worker.matricula})
-                      </span>
-                    </p>
-                    <p style={{ fontSize: "13px", color: "var(--gray-600)", margin: "0 0 8px 0" }}>
-                      {delivery.project?.name || "Sem contrato vinculado"}
-                    </p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                      {delivery.items.map((item) => (
-                        <span
-                          key={item.id}
-                          style={{
-                            fontSize: "12px",
-                            backgroundColor: "var(--gray-50)",
-                            border: "1px solid var(--gray-200)",
-                            padding: "2px 8px",
-                            borderRadius: "6px",
-                            color: "var(--gray-700)",
-                          }}
-                        >
-                          {item.quantity}x {item.product.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <p style={{ fontSize: "12px", color: "var(--gray-400)", margin: "0 0 6px 0" }}>
-                      {formatDateTime(delivery.deliveredAt)}
-                    </p>
-                    <StatusBadge status={delivery.status} />
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
         {/* Estoque Disponível */}
         <div
           style={{
@@ -688,6 +589,105 @@ export default async function DashboardPage() {
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+        </div>
+
+        {/* Últimas Entregas */}
+        <div
+          style={{
+            backgroundColor: "#ffffff",
+            borderRadius: "14px",
+            border: "1px solid var(--gray-200)",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              padding: "20px 24px",
+              borderBottom: "1px solid var(--gray-200)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <Clock size={18} style={{ color: "var(--navy-800)" }} />
+              <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--navy-900)", margin: 0 }}>
+                Últimas Entregas
+              </h2>
+            </div>
+            <Link
+              href="/deliveries"
+              style={{
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "#0284c7",
+                textDecoration: "none",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              Ver todas <ArrowRight size={14} />
+            </Link>
+          </div>
+
+          <div style={{ padding: "0 24px" }}>
+            {recentDeliveries.length === 0 ? (
+              <div style={{ padding: "40px 0", textAlign: "center", color: "var(--gray-400)" }}>
+                <p style={{ fontSize: "14px", margin: 0 }}>Nenhuma entrega registrada ainda.</p>
+              </div>
+            ) : (
+              recentDeliveries.map((delivery, idx) => (
+                <div
+                  key={delivery.id}
+                  style={{
+                    padding: "20px 0",
+                    borderBottom: idx < recentDeliveries.length - 1 ? "1px solid var(--gray-100)" : "none",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    gap: "16px",
+                  }}
+                >
+                  <div>
+                    <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--gray-900)", margin: "0 0 4px 0" }}>
+                      {delivery.worker.name}{" "}
+                      <span style={{ fontSize: "13px", fontWeight: 400, color: "var(--gray-500)" }}>
+                        (Mat: {delivery.worker.matricula})
+                      </span>
+                    </p>
+                    <p style={{ fontSize: "13px", color: "var(--gray-600)", margin: "0 0 8px 0" }}>
+                      {delivery.project?.name || "Sem contrato vinculado"}
+                    </p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                      {delivery.items.map((item) => (
+                        <span
+                          key={item.id}
+                          style={{
+                            fontSize: "12px",
+                            backgroundColor: "var(--gray-50)",
+                            border: "1px solid var(--gray-200)",
+                            padding: "2px 8px",
+                            borderRadius: "6px",
+                            color: "var(--gray-700)",
+                          }}
+                        >
+                          {item.quantity}x {item.product.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <p style={{ fontSize: "12px", color: "var(--gray-400)", margin: "0 0 6px 0" }}>
+                      {formatDateTime(delivery.deliveredAt)}
+                    </p>
+                    <StatusBadge status={delivery.status} />
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </div>
