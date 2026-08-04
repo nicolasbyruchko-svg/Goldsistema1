@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import {
-  Package,
   ClipboardList,
   AlertTriangle,
   Clock,
@@ -293,353 +292,173 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Main Content Grid */}
+      {/* Estoque Disponível */}
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 400px",
-          gap: "24px",
-          alignItems: "start",
+          backgroundColor: "#ffffff",
+          borderRadius: "14px",
+          border: "1px solid var(--gray-200)",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
+          overflow: "hidden",
+          marginBottom: "24px",
         }}
       >
-        {/* Estoque Atual */}
         <div
           style={{
-            backgroundColor: "#ffffff",
-            borderRadius: "14px",
-            border: "1px solid var(--gray-200)",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
-            overflow: "hidden",
+            padding: "20px 24px",
+            borderBottom: "1px solid var(--gray-200)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
           }}
         >
-          <div
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <Boxes size={18} style={{ color: "var(--navy-800)" }} />
+            <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--navy-900)", margin: 0 }}>
+              Estoque Disponível
+            </h2>
+          </div>
+          <Link
+            href="/stock"
             style={{
-              padding: "20px 24px",
-              borderBottom: "1px solid var(--gray-200)",
+              fontSize: "13px",
+              fontWeight: 600,
+              color: "#0284c7",
+              textDecoration: "none",
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
+              gap: "4px",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <Package size={18} style={{ color: "var(--navy-800)" }} />
-              <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--navy-900)", margin: 0 }}>
-                Estoque Atual
-              </h2>
-            </div>
-            <Link
-              href="/stock"
-              style={{
-                fontSize: "13px",
-                fontWeight: 600,
-                color: "#0284c7",
-                textDecoration: "none",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-              }}
-            >
-              Ver estoque <ArrowRight size={14} />
-            </Link>
-          </div>
+            Ver estoque <ArrowRight size={14} />
+          </Link>
+        </div>
 
-          {products.length === 0 ? (
-            <div style={{ padding: "40px 24px", textAlign: "center", color: "var(--gray-400)" }}>
+        <div style={{ padding: "16px 24px" }}>
+          {pieces.length === 0 ? (
+            <div style={{ textAlign: "center", color: "var(--gray-400)", padding: "30px 0" }}>
               <p style={{ fontSize: "14px", margin: 0 }}>Nenhum item cadastrado no estoque.</p>
             </div>
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
-                <thead>
-                  <tr style={{ backgroundColor: "var(--gray-50)", borderBottom: "1px solid var(--gray-200)" }}>
-                    {["Produto", "Tamanho", "SKU", "Tipo", "Condição", "Estoque", "Mín."].map((col) => (
-                      <th
-                        key={col}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))",
+                gap: "12px",
+              }}
+            >
+              {pieces.map((piece) => (
+                <div
+                  key={piece.name}
+                  style={{
+                    border: piece.hasCritical ? "1px solid #fde68a" : "1px solid var(--gray-200)",
+                    borderRadius: "12px",
+                    overflow: "hidden",
+                    backgroundColor: "#ffffff",
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "12px 14px",
+                      borderBottom: "1px solid var(--gray-100)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "10px",
+                      backgroundColor: piece.hasCritical ? "#fffbeb" : "var(--gray-50)",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                      <span
                         style={{
-                          padding: "12px 20px",
-                          textAlign: "left",
-                          fontSize: "12px",
+                          flexShrink: 0,
+                          padding: "2px 8px",
+                          borderRadius: "999px",
+                          fontSize: "11px",
                           fontWeight: 600,
-                          color: "var(--gray-500)",
-                          letterSpacing: "0.6px",
-                          textTransform: "uppercase",
-                          whiteSpace: "nowrap",
+                          backgroundColor: piece.variants[0].type === "EPI" ? "rgba(25,55,109,0.08)" : "#e0f2fe",
+                          color: piece.variants[0].type === "EPI" ? "var(--navy-800)" : "#0284c7",
                         }}
                       >
-                        {col}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {products.map((product, idx) => {
-                    const isCritical = product.stockQuantity <= product.minStock;
-                    return (
-                      <tr
-                        key={product.id}
+                        {piece.variants[0].type === "EPI" ? "EPI" : "Uniforme"}
+                      </span>
+                      <p
                         style={{
-                          borderBottom: idx < products.length - 1 ? "1px solid var(--gray-100)" : "none",
-                          backgroundColor: isCritical ? "#fffbeb" : "transparent",
+                          fontSize: "13px",
+                          fontWeight: 600,
+                          color: "var(--gray-900)",
+                          margin: 0,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
                         }}
                       >
-                        <td style={{ padding: "12px 20px", fontWeight: 600, color: "var(--gray-900)" }}>
-                          {product.name}
-                        </td>
-                        <td style={{ padding: "12px 20px" }}>
-                          <span
-                            style={{
-                              fontFamily: "monospace",
-                              fontSize: "12px",
-                              backgroundColor: "var(--gray-100)",
-                              padding: "2px 7px",
-                              borderRadius: "5px",
-                              color: "var(--gray-700)",
-                            }}
-                          >
-                            {product.size || "Único"}
+                        {piece.name}
+                      </p>
+                    </div>
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <span style={{ fontSize: "18px", fontWeight: 800, color: "var(--navy-900)" }}>
+                        {piece.total}
+                      </span>
+                      <div style={{ display: "flex", gap: "6px", marginTop: "2px", justifyContent: "flex-end" }}>
+                        {piece.novoCount > 0 && (
+                          <span style={{ fontSize: "10px", fontWeight: 600, color: "#059669", backgroundColor: "#d1fae5", padding: "1px 5px", borderRadius: "4px" }}>
+                            {piece.novoCount} novo{piece.novoCount !== 1 ? "s" : ""}
                           </span>
-                        </td>
-                        <td style={{ padding: "12px 20px" }}>
-                          <span
-                            style={{
-                              fontFamily: "monospace",
-                              fontSize: "12px",
-                              backgroundColor: "var(--gray-100)",
-                              padding: "2px 7px",
-                              borderRadius: "5px",
-                              color: "var(--gray-700)",
-                            }}
-                          >
-                            {product.sku}
+                        )}
+                        {piece.higienizadoCount > 0 && (
+                          <span style={{ fontSize: "10px", fontWeight: 600, color: "#0284c7", backgroundColor: "#e0f2fe", padding: "1px 5px", borderRadius: "4px" }}>
+                            {piece.higienizadoCount} hig.
                           </span>
-                        </td>
-                         <td style={{ padding: "12px 20px" }}>
-                           <span
-                             style={{
-                               display: "inline-flex",
-                               alignItems: "center",
-                               padding: "3px 10px",
-                               borderRadius: "999px",
-                               fontSize: "12px",
-                               fontWeight: 600,
-                               backgroundColor: product.type === "EPI" ? "rgba(25,55,109,0.08)" : "#e0f2fe",
-                               color: product.type === "EPI" ? "var(--navy-800)" : "#0284c7",
-                             }}
-                           >
-                             {product.type === "EPI" ? "EPI" : "Uniforme"}
-                           </span>
-                         </td>
-                         <td style={{ padding: "12px 20px" }}>
-                           <span
-                             style={{
-                               display: "inline-flex",
-                               alignItems: "center",
-                               padding: "3px 10px",
-                               borderRadius: "999px",
-                               fontSize: "12px",
-                               fontWeight: 600,
-                               backgroundColor: product.condition === "NOVO" ? "#d1fae5" : "#e0f2fe",
-                               color: product.condition === "NOVO" ? "#059669" : "#0284c7",
-                             }}
-                           >
-                             {product.condition === "NOVO" ? "Novo" : "Higienizado"}
-                           </span>
-                         </td>
-                        <td style={{ padding: "12px 20px" }}>
-                          <span
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "8px",
-                              fontSize: "16px",
-                              fontWeight: 800,
-                              color: isCritical ? "#dc2626" : "#15803d",
-                            }}
-                          >
-                            {product.stockQuantity}
-                            {isCritical && (
-                              <AlertTriangle size={14} style={{ color: "#f59e0b" }} strokeWidth={2.5} />
-                            )}
-                          </span>
-                        </td>
-                        <td style={{ padding: "12px 20px", color: "var(--gray-400)", fontSize: "13px" }}>
-                          {product.minStock}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ padding: "10px 14px", display: "flex", flexWrap: "wrap", gap: "6px", flex: 1, alignContent: "flex-start" }}>
+                    {piece.variants.map((v) => {
+                      const critical = v.stockQuantity <= v.minStock;
+                      return (
+                        <span
+                          key={v.id}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            padding: "3px 9px",
+                            borderRadius: "8px",
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            backgroundColor: critical ? "#fef2f2" : "#f3f4f6",
+                            border: critical ? "1px solid #fecaca" : "1px solid var(--gray-200)",
+                            color: critical ? "#dc2626" : "var(--gray-700)",
+                          }}
+                        >
+                          {v.size || "Único"}
+                          <span style={{ fontWeight: 800, fontSize: "13px" }}>{v.stockQuantity}</span>
+                          {critical && <AlertTriangle size={11} style={{ color: "#f59e0b" }} strokeWidth={2.5} />}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
+      </div>
 
-        {/* Estoque Disponível */}
-        <div
-          style={{
-            backgroundColor: "#ffffff",
-            borderRadius: "14px",
-            border: "1px solid var(--gray-200)",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              padding: "20px 24px",
-              borderBottom: "1px solid var(--gray-200)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <Boxes size={18} style={{ color: "var(--navy-800)" }} />
-              <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--navy-900)", margin: 0 }}>
-                Estoque Disponível
-              </h2>
-            </div>
-            <Link
-              href="/stock"
-              style={{
-                fontSize: "13px",
-                fontWeight: 600,
-                color: "#0284c7",
-                textDecoration: "none",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-              }}
-            >
-              Ver estoque <ArrowRight size={14} />
-            </Link>
-          </div>
-
-          <div style={{ padding: "16px 24px" }}>
-            {pieces.length === 0 ? (
-              <div style={{ textAlign: "center", color: "var(--gray-400)", padding: "30px 0" }}>
-                <p style={{ fontSize: "14px", margin: 0 }}>Nenhum item cadastrado no estoque.</p>
-              </div>
-            ) : (
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))",
-                  gap: "12px",
-                }}
-              >
-                {pieces.map((piece) => (
-                  <div
-                    key={piece.name}
-                    style={{
-                      border: piece.hasCritical ? "1px solid #fde68a" : "1px solid var(--gray-200)",
-                      borderRadius: "12px",
-                      overflow: "hidden",
-                      backgroundColor: "#ffffff",
-                      display: "flex",
-                      flexDirection: "column",
-                    }}
-                  >
-                    <div
-                      style={{
-                        padding: "12px 14px",
-                        borderBottom: "1px solid var(--gray-100)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: "10px",
-                        backgroundColor: piece.hasCritical ? "#fffbeb" : "var(--gray-50)",
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
-                        <span
-                          style={{
-                            flexShrink: 0,
-                            padding: "2px 8px",
-                            borderRadius: "999px",
-                            fontSize: "11px",
-                            fontWeight: 600,
-                            backgroundColor: piece.variants[0].type === "EPI" ? "rgba(25,55,109,0.08)" : "#e0f2fe",
-                            color: piece.variants[0].type === "EPI" ? "var(--navy-800)" : "#0284c7",
-                          }}
-                        >
-                          {piece.variants[0].type === "EPI" ? "EPI" : "Uniforme"}
-                        </span>
-                        <p
-                          style={{
-                            fontSize: "13px",
-                            fontWeight: 600,
-                            color: "var(--gray-900)",
-                            margin: 0,
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                          }}
-                        >
-                          {piece.name}
-                        </p>
-                      </div>
-                      <div style={{ textAlign: "right", flexShrink: 0 }}>
-                        <span style={{ fontSize: "18px", fontWeight: 800, color: "var(--navy-900)" }}>
-                          {piece.total}
-                        </span>
-                        <div style={{ display: "flex", gap: "6px", marginTop: "2px", justifyContent: "flex-end" }}>
-                          {piece.novoCount > 0 && (
-                            <span style={{ fontSize: "10px", fontWeight: 600, color: "#059669", backgroundColor: "#d1fae5", padding: "1px 5px", borderRadius: "4px" }}>
-                              {piece.novoCount} novo{piece.novoCount !== 1 ? "s" : ""}
-                            </span>
-                          )}
-                          {piece.higienizadoCount > 0 && (
-                            <span style={{ fontSize: "10px", fontWeight: 600, color: "#0284c7", backgroundColor: "#e0f2fe", padding: "1px 5px", borderRadius: "4px" }}>
-                              {piece.higienizadoCount} hig.
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ padding: "10px 14px", display: "flex", flexWrap: "wrap", gap: "6px", flex: 1, alignContent: "flex-start" }}>
-                      {piece.variants.map((v) => {
-                        const critical = v.stockQuantity <= v.minStock;
-                        return (
-                          <span
-                            key={v.id}
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "5px",
-                              padding: "3px 9px",
-                              borderRadius: "8px",
-                              fontSize: "11px",
-                              fontWeight: 600,
-                              backgroundColor: critical ? "#fef2f2" : "#f3f4f6",
-                              border: critical ? "1px solid #fecaca" : "1px solid var(--gray-200)",
-                              color: critical ? "#dc2626" : "var(--gray-700)",
-                            }}
-                          >
-                            {v.size || "Único"}
-                            <span style={{ fontWeight: 800, fontSize: "13px" }}>{v.stockQuantity}</span>
-                            {critical && <AlertTriangle size={11} style={{ color: "#f59e0b" }} strokeWidth={2.5} />}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Últimas Entregas */}
-        <div
-          style={{
-            backgroundColor: "#ffffff",
-            borderRadius: "14px",
-            border: "1px solid var(--gray-200)",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
-            overflow: "hidden",
-          }}
-        >
+      {/* Últimas Entregas */}
+      <div
+        style={{
+          backgroundColor: "#ffffff",
+          borderRadius: "14px",
+          border: "1px solid var(--gray-200)",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
+          overflow: "hidden",
+        }}
+      >
           <div
             style={{
               padding: "20px 24px",
@@ -727,7 +546,6 @@ export default async function DashboardPage() {
               ))
             )}
           </div>
-        </div>
       </div>
     </div>
   );
