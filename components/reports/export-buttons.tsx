@@ -61,9 +61,9 @@ function drawTableHead(page: PDFPage, font: PDFFont, y: number): number {
   for (const c of COLS) {
     page.drawText(c.label, { x: c.x, y, size: 8, font, color: rgb(0.4, 0.4, 0.4) });
   }
-  y -= 8;
+  y -= 10;
   page.drawLine({ start: { x: MARGIN, y }, end: { x: PAGE_W - MARGIN, y }, thickness: 0.5, color: rgb(0.75, 0.75, 0.75) });
-  return y - 6;
+  return y - 10;
 }
 
 function trunc(text: string, max: number): string {
