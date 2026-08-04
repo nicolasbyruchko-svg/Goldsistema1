@@ -372,7 +372,7 @@ export default async function DashboardPage() {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
                 <thead>
                   <tr style={{ backgroundColor: "var(--gray-50)", borderBottom: "1px solid var(--gray-200)" }}>
-                    {["Produto", "SKU", "Tipo", "Estoque", "Mín."].map((col) => (
+                    {["Produto", "Tamanho", "SKU", "Tipo", "Estoque", "Mín."].map((col) => (
                       <th
                         key={col}
                         style={{
@@ -404,6 +404,20 @@ export default async function DashboardPage() {
                       >
                         <td style={{ padding: "12px 20px", fontWeight: 600, color: "var(--gray-900)" }}>
                           {product.name}
+                        </td>
+                        <td style={{ padding: "12px 20px" }}>
+                          <span
+                            style={{
+                              fontFamily: "monospace",
+                              fontSize: "12px",
+                              backgroundColor: "var(--gray-100)",
+                              padding: "2px 7px",
+                              borderRadius: "5px",
+                              color: "var(--gray-700)",
+                            }}
+                          >
+                            {product.size || "Único"}
+                          </span>
                         </td>
                         <td style={{ padding: "12px 20px" }}>
                           <span
