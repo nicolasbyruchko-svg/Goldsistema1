@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 
 interface Variant {
   id: string;
@@ -24,6 +24,8 @@ const SIZE_PALETTE = [
   "#059669", "#0284c7", "#8b5cf6", "#f59e0b", "#ef4444",
   "#06b6d4", "#84cc16", "#f97316", "#ec4899", "#6366f1",
 ];
+
+const STORAGE_KEY = "stock-charts-order";
 
 function PieSlice({ cx, cy, r, startAngle, endAngle, fill }: { cx: number; cy: number; r: number; startAngle: number; endAngle: number; fill: string }) {
   if (endAngle - startAngle >= 359.99) {
@@ -84,7 +86,21 @@ function Legend({ items }: { items: { label: string; value: number; color: strin
   );
 }
 
-function PieceCharts({ piece }: { piece: Piece }) {
+function PieceCharts({
+  piece,
+  isDragging,
+  onDragStart,
+  onDragOver,
+  onDragEnd,
+  onDrop,
+}: {
+  piece: Piece;
+  isDragging: boolean;
+  onDragStart: (e: React.DragEvent, name: string) => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragEnd: () => void;
+  onDrop: (e: React.DragEvent, name: string) => void;
+}) {
   const novoSizeData = useMemo(() => {
     const bySize = new Map<string, number>();
     for (const v of piece.variants.filter((v) => v.condition === "NOVO")) {
@@ -113,11 +129,20 @@ function PieceCharts({ piece }: { piece: Piece }) {
 
   return (
     <div
+      draggable
+      onDragStart={(e) => onDragStart(e, piece.name)}
+      onDragOver={onDragOver}
+      onDragEnd={onDragEnd}
+      onDrop={(e) => onDrop(e, piece.name)}
       style={{
         border: piece.hasCritical ? "1px solid #fde68a" : "1px solid var(--gray-200)",
         borderRadius: "12px",
         overflow: "hidden",
         backgroundColor: "#ffffff",
+        cursor: "grab",
+        opacity: isDragging ? 0.4 : 1,
+        transform: isDragging ? "scale(0.98)" : "none",
+        transition: "opacity 0.15s, transform 0.15s",
       }}
     >
       <div
@@ -128,8 +153,20 @@ function PieceCharts({ piece }: { piece: Piece }) {
           alignItems: "center",
           gap: "8px",
           backgroundColor: piece.hasCritical ? "#fffbeb" : "var(--gray-50)",
+          userSelect: "none",
         }}
       >
+        <span
+          style={{
+            flexShrink: 0,
+            fontSize: "14px",
+            color: "var(--gray-300)",
+            cursor: "grab",
+          }}
+          title="Arrastar para reordenar"
+        >
+          ⠿
+        </span>
         <span
           style={{
             flexShrink: 0,
@@ -188,6 +225,82 @@ function PieceCharts({ piece }: { piece: Piece }) {
 }
 
 export function StockCharts({ pieces }: { pieces: Piece[] }) {
+  const [orderedPieces, setOrderedPieces] = useState<Piece[]>([]);
+  const [draggingName, setDraggingName] = useState<string | null>(null);
+  const [overName, setOverName] = useState<string | null>(null);
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const order: string[] = JSON.parse(saved);
+        const byName = new Map(pieces.map((p) => [p.name, p]));
+        const restored = order
+          .map((name) => byName.get(name))
+          .filter((p): p is Piece => !!p);
+        const newPieces = pieces.filter((p) => !order.includes(p.name));
+        setOrderedPieces([...restored, ...newPieces]);
+        return;
+      }
+    } catch {}
+    setOrderedPieces([...pieces]);
+  }, [pieces]);
+
+  useEffect(() => {
+    if (orderedPieces.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(orderedPieces.map((p) => p.name)));
+    }
+  }, [orderedPieces]);
+
+  const handleDragStart = useCallback((e: React.DragEvent, name: string) => {
+    setDraggingName(name);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", name);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }, []);
+
+  const handleDragEnter = useCallback((name: string) => {
+    setOverName(name);
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    setDraggingName(null);
+    setOverName(null);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, targetName: string) => {
+    e.preventDefault();
+    const sourceName = e.dataTransfer.getData("text/plain");
+    if (!sourceName || sourceName === targetName) {
+      setDraggingName(null);
+      setOverName(null);
+      return;
+    }
+
+    setOrderedPieces((prev) => {
+      const items = [...prev];
+      const srcIdx = items.findIndex((p) => p.name === sourceName);
+      const tgtIdx = items.findIndex((p) => p.name === targetName);
+      if (srcIdx === -1 || tgtIdx === -1) return prev;
+      const [moved] = items.splice(srcIdx, 1);
+      items.splice(tgtIdx, 0, moved);
+      return items;
+    });
+
+    setDraggingName(null);
+    setOverName(null);
+  }, []);
+
+  const displayPieces = orderedPieces.length > 0 ? orderedPieces : pieces;
+
   return (
     <div
       style={{
@@ -196,8 +309,26 @@ export function StockCharts({ pieces }: { pieces: Piece[] }) {
         gap: "16px",
       }}
     >
-      {pieces.map((piece) => (
-        <PieceCharts key={piece.name} piece={piece} />
+      {displayPieces.map((piece) => (
+        <div
+          key={piece.name}
+          onDragEnter={() => handleDragEnter(piece.name)}
+          style={{
+            outline: overName === piece.name && draggingName !== piece.name ? "2px dashed #0284c7" : "none",
+            outlineOffset: "2px",
+            borderRadius: "14px",
+            transition: "outline 0.15s",
+          }}
+        >
+          <PieceCharts
+            piece={piece}
+            isDragging={draggingName === piece.name}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+            onDrop={handleDrop}
+          />
+        </div>
       ))}
     </div>
   );
