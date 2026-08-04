@@ -610,23 +610,33 @@ export default async function DashboardPage() {
                 <p style={{ fontSize: "14px", margin: 0 }}>Nenhum item cadastrado no estoque.</p>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))",
+                  gap: "12px",
+                }}
+              >
                 {pieces.map((piece) => (
                   <div
                     key={piece.name}
                     style={{
-                      border: "1px solid var(--gray-200)",
-                      borderRadius: "10px",
+                      border: piece.hasCritical ? "1px solid #fde68a" : "1px solid var(--gray-200)",
+                      borderRadius: "12px",
                       overflow: "hidden",
+                      backgroundColor: "#ffffff",
+                      display: "flex",
+                      flexDirection: "column",
                     }}
                   >
                     <div
                       style={{
-                        padding: "12px 16px",
+                        padding: "12px 14px",
+                        borderBottom: "1px solid var(--gray-100)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        gap: "12px",
+                        gap: "10px",
                         backgroundColor: piece.hasCritical ? "#fffbeb" : "var(--gray-50)",
                       }}
                     >
@@ -658,11 +668,11 @@ export default async function DashboardPage() {
                           {piece.name}
                         </p>
                       </div>
-                      <span style={{ fontSize: "16px", fontWeight: 800, color: "var(--navy-900)", flexShrink: 0 }}>
+                      <span style={{ fontSize: "18px", fontWeight: 800, color: "var(--navy-900)", flexShrink: 0 }}>
                         {piece.total}
                       </span>
                     </div>
-                    <div style={{ padding: "10px 16px", display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                    <div style={{ padding: "10px 14px", display: "flex", flexWrap: "wrap", gap: "6px", flex: 1, alignContent: "flex-start" }}>
                       {piece.variants.map((v) => {
                         const critical = v.stockQuantity <= v.minStock;
                         return (
@@ -671,10 +681,10 @@ export default async function DashboardPage() {
                             style={{
                               display: "inline-flex",
                               alignItems: "center",
-                              gap: "6px",
-                              padding: "4px 10px",
+                              gap: "5px",
+                              padding: "3px 9px",
                               borderRadius: "8px",
-                              fontSize: "12px",
+                              fontSize: "11px",
                               fontWeight: 600,
                               backgroundColor: critical ? "#fef2f2" : "#f3f4f6",
                               border: critical ? "1px solid #fecaca" : "1px solid var(--gray-200)",
@@ -682,8 +692,8 @@ export default async function DashboardPage() {
                             }}
                           >
                             {v.size || "Único"}
-                            <span style={{ fontWeight: 800, fontSize: "14px" }}>{v.stockQuantity}</span>
-                            {critical && <AlertTriangle size={12} style={{ color: "#f59e0b" }} strokeWidth={2.5} />}
+                            <span style={{ fontWeight: 800, fontSize: "13px" }}>{v.stockQuantity}</span>
+                            {critical && <AlertTriangle size={11} style={{ color: "#f59e0b" }} strokeWidth={2.5} />}
                           </span>
                         );
                       })}
