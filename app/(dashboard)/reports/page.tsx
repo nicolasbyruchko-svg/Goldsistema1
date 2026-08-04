@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { getSpendingReport } from "@/actions/reports-actions";
+import { getSpendingReport, getUsageReport } from "@/actions/reports-actions";
 import { ReportExportButtons } from "@/components/reports/export-buttons";
 import { PeriodSpendCard } from "@/components/reports/period-spend-card";
-import { BarChart3, TrendingUp, Package, ClipboardList, Building2, User, Tag } from "lucide-react";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { UsageReportFilters } from "@/components/reports/usage-report-filters";
+import { BarChart3, TrendingUp, Package, ClipboardList, Building2, User, Tag, ClipboardCheck, AlertTriangle } from "lucide-react";
+import { formatCurrency, formatNumber, formatDate, formatReason } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Relatórios",
@@ -20,10 +21,25 @@ export default async function ReportsPage({
   const fromStr = typeof sp.from === "string" ? sp.from : "";
   const toStr = typeof sp.to === "string" ? sp.to : "";
 
-  const report = await getSpendingReport({
-    from: fromStr ? new Date(fromStr + "T00:00:00") : undefined,
-    to: toStr ? new Date(toStr + "T23:59:59") : undefined,
-  });
+  const usageProductId = typeof sp.usageProductId === "string" ? sp.usageProductId : "";
+  const usageSize = typeof sp.usageSize === "string" ? sp.usageSize : "";
+  const usageProjectId = typeof sp.usageProjectId === "string" ? sp.usageProjectId : "";
+  const usageFromStr = typeof sp.usageFrom === "string" ? sp.usageFrom : "";
+  const usageToStr = typeof sp.usageTo === "string" ? sp.usageTo : "";
+
+  const [report, usageReport] = await Promise.all([
+    getSpendingReport({
+      from: fromStr ? new Date(fromStr + "T00:00:00") : undefined,
+      to: toStr ? new Date(toStr + "T23:59:59") : undefined,
+    }),
+    getUsageReport({
+      productId: usageProductId || undefined,
+      size: usageSize || undefined,
+      projectId: usageProjectId || undefined,
+      from: usageFromStr ? new Date(usageFromStr + "T00:00:00") : undefined,
+      to: usageToStr ? new Date(usageToStr + "T23:59:59") : undefined,
+    }),
+  ]);
   const { totals, byProject, byWorker, byReason } = report;
 
   const cards = [
@@ -173,6 +189,157 @@ export default async function ReportsPage({
         {renderTable("Por Contrato", <Building2 size={16} style={{ color: "#0284c7" }} />, byProject, "Nenhuma entrega registrada ainda.")}
         {renderTable("Por Colaborador", <User size={16} style={{ color: "var(--navy-800)" }} />, byWorker, "Nenhuma entrega registrada ainda.")}
         {renderTable("Por Motivo", <Tag size={16} style={{ color: "#d97706" }} />, byReason, "Nenhuma entrega registrada ainda.")}
+      </div>
+
+      {/* Relatório de Uso */}
+      <div style={{ marginTop: "32px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+          <div style={{ width: "36px", height: "36px", borderRadius: "9px", backgroundColor: "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <ClipboardCheck size={18} style={{ color: "#d97706" }} />
+          </div>
+          <h2 style={{ fontSize: "18px", fontWeight: 700, color: "var(--navy-900)", margin: 0 }}>
+            Relatório de Uso
+          </h2>
+        </div>
+
+        <UsageReportFilters
+          products={usageReport.products}
+          sizes={usageReport.sizes}
+          projects={usageReport.projects}
+          currentFilters={{
+            productId: usageProductId,
+            size: usageSize,
+            projectId: usageProjectId,
+            from: usageFromStr,
+            to: usageToStr,
+          }}
+        />
+
+        {/* Stats do Relatório de Uso */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px", marginTop: "16px" }}>
+          <div style={{ backgroundColor: "#fff", borderRadius: "10px", padding: "16px 20px", boxShadow: "0 1px 3px rgba(0,0,0,0.07)", border: "1px solid var(--gray-200)" }}>
+            <span style={{ fontSize: "12px", color: "var(--gray-500)", fontWeight: 500 }}>Registros</span>
+            <span style={{ display: "block", fontSize: "22px", fontWeight: 800, color: "var(--navy-900)", lineHeight: 1.1, marginTop: "2px" }}>
+              {formatNumber(usageReport.totals.totalRows)}
+            </span>
+          </div>
+          <div style={{ backgroundColor: "#fff", borderRadius: "10px", padding: "16px 20px", boxShadow: "0 1px 3px rgba(0,0,0,0.07)", border: "1px solid var(--gray-200)" }}>
+            <span style={{ fontSize: "12px", color: "var(--gray-500)", fontWeight: 500 }}>Itens Entregues</span>
+            <span style={{ display: "block", fontSize: "22px", fontWeight: 800, color: "#0284c7", lineHeight: 1.1, marginTop: "2px" }}>
+              {formatNumber(usageReport.totals.totalItems)}
+            </span>
+          </div>
+          <div style={{ backgroundColor: "#fff", borderRadius: "10px", padding: "16px 20px", boxShadow: "0 1px 3px rgba(0,0,0,0.07)", border: "1px solid var(--gray-200)" }}>
+            <span style={{ fontSize: "12px", color: "var(--gray-500)", fontWeight: 500 }}>Gasto Total</span>
+            <span style={{ display: "block", fontSize: "22px", fontWeight: 800, color: "#059669", lineHeight: 1.1, marginTop: "2px" }}>
+              {formatCurrency(usageReport.totals.totalSpent)}
+            </span>
+          </div>
+        </div>
+
+        {/* Tabela de Uso */}
+        <div
+          style={{
+            backgroundColor: "#fff",
+            borderRadius: "14px",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
+            border: "1px solid var(--gray-200)",
+            overflow: "hidden",
+            marginTop: "16px",
+          }}
+        >
+          {usageReport.rows.length === 0 ? (
+            <div style={{ padding: "40px 24px", textAlign: "center", color: "var(--gray-400)", fontSize: "13px" }}>
+              Nenhum registro de uso encontrado para os filtros selecionados.
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
+                <thead>
+                  <tr style={{ backgroundColor: "var(--gray-50)", borderBottom: "1px solid var(--gray-200)" }}>
+                    {["Data", "Colaborador", "Contrato", "Peça", "Tamanho", "Qtd", "Custo Unit.", "Total", "Motivo"].map((col) => (
+                      <th
+                        key={col}
+                        style={{
+                          padding: "12px 20px",
+                          textAlign: col === "Qtd" || col === "Custo Unit." || col === "Total" ? "right" : "left",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          color: "var(--gray-500)",
+                          letterSpacing: "0.6px",
+                          textTransform: "uppercase",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {usageReport.rows.map((row, idx) => (
+                    <tr
+                      key={row.id}
+                      style={{ borderBottom: idx < usageReport.rows.length - 1 ? "1px solid var(--gray-100)" : "none" }}
+                    >
+                      <td style={{ padding: "12px 20px", whiteSpace: "nowrap", color: "var(--gray-600)" }}>
+                        {formatDate(row.date)}
+                      </td>
+                      <td style={{ padding: "12px 20px", fontWeight: 600, color: "var(--gray-900)" }}>
+                        {row.workerName}
+                      </td>
+                      <td style={{ padding: "12px 20px", color: "var(--gray-600)", fontSize: "13px" }}>
+                        {row.projectName}
+                      </td>
+                      <td style={{ padding: "12px 20px", fontWeight: 600, color: "var(--gray-900)" }}>
+                        {row.productName}
+                      </td>
+                      <td style={{ padding: "12px 20px" }}>
+                        <span
+                          style={{
+                            fontFamily: "monospace",
+                            fontSize: "12px",
+                            backgroundColor: "var(--gray-100)",
+                            padding: "2px 7px",
+                            borderRadius: "5px",
+                            color: "var(--gray-700)",
+                          }}
+                        >
+                          {row.productSize || "Único"}
+                        </span>
+                      </td>
+                      <td style={{ padding: "12px 20px", textAlign: "right", fontWeight: 600, color: "var(--gray-700)" }}>
+                        {row.quantity}
+                      </td>
+                      <td style={{ padding: "12px 20px", textAlign: "right", color: "var(--gray-600)" }}>
+                        {formatCurrency(row.unitCost)}
+                      </td>
+                      <td style={{ padding: "12px 20px", textAlign: "right", fontWeight: 800, color: "#059669" }}>
+                        {formatCurrency(row.total)}
+                      </td>
+                      <td style={{ padding: "12px 20px" }}>
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            padding: "3px 10px",
+                            borderRadius: "999px",
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            backgroundColor: row.reason === "FIRST_DELIVERY" ? "#d1fae5" : row.reason === "REPLACEMENT_LOSS" ? "#fef3c7" : "#ede9fe",
+                            color: row.reason === "FIRST_DELIVERY" ? "#059669" : row.reason === "REPLACEMENT_LOSS" ? "#92400e" : "#7c3aed",
+                          }}
+                        >
+                          {formatReason(row.reason)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

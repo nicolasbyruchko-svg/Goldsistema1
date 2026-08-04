@@ -30,6 +30,48 @@ export type SpendingReport = {
   byReason: SpendingRow[];
 };
 
+export type UsageReportFilters = {
+  productId?: string;
+  size?: string;
+  projectId?: string;
+  from?: Date;
+  to?: Date;
+};
+
+export type UsageReportRow = {
+  id: string;
+  date: Date;
+  workerName: string;
+  workerMatricula: string;
+  projectName: string;
+  productName: string;
+  productSize: string | null;
+  quantity: number;
+  unitCost: number;
+  total: number;
+  reason: string;
+};
+
+export type UsageReport = {
+  generatedAt: Date;
+  filters: {
+    productId?: string;
+    size?: string;
+    projectId?: string;
+    from?: Date;
+    to?: Date;
+  };
+  totals: {
+    totalItems: number;
+    totalSpent: number;
+    totalRows: number;
+  };
+  rows: UsageReportRow[];
+  products: { id: string; name: string; size: string | null }[];
+  sizes: string[];
+  projects: { id: string; name: string }[];
+};
+
 const REASON_KEYS = ["FIRST_DELIVERY", "REPLACEMENT_WEAR", "REPLACEMENT_LOSS"];
 
 /**
@@ -39,6 +81,110 @@ const REASON_KEYS = ["FIRST_DELIVERY", "REPLACEMENT_WEAR", "REPLACEMENT_LOSS"];
  * Regra definida com o cliente: entregas CANCELADAS (status "CANCELLED")
  * NÃO entram no gasto — o item volta ao estoque e não representa despesa.
  */
+export async function getUsageReport(filters?: UsageReportFilters): Promise<UsageReport> {
+  const now = new Date();
+
+  const whereItems: Record<string, unknown> = {};
+  if (filters?.productId) whereItems.productId = filters.productId;
+
+  const whereDelivery: Record<string, unknown> = { status: { not: "CANCELLED" } };
+  if (filters?.projectId) whereDelivery.projectId = filters.projectId;
+  if (filters?.from || filters?.to) {
+    whereDelivery.deliveredAt = {
+      ...(filters.from && { gte: filters.from }),
+      ...(filters.to && { lte: filters.to }),
+    };
+  }
+
+  const [deliveryItems, allProducts, allProjects] = await Promise.all([
+    prisma.deliveryItem.findMany({
+      where: {
+        delivery: whereDelivery,
+        ...whereItems,
+      },
+      include: {
+        product: { select: { id: true, name: true, size: true } },
+        delivery: {
+          select: {
+            deliveredAt: true,
+            worker: { select: { name: true, matricula: true } },
+            project: { select: { id: true, name: true } },
+          },
+        },
+      },
+      orderBy: { delivery: { deliveredAt: "desc" } },
+    }),
+    prisma.product.findMany({
+      where: { archived: false },
+      select: { id: true, name: true, size: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.project.findMany({
+      where: { active: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
+
+  const sizeSet = new Set<string>();
+  const productSizeMap = new Map<string, Set<string>>();
+
+  const rows: UsageReportRow[] = deliveryItems
+    .filter((item) => {
+      if (filters?.size) {
+        const itemSize = item.product.size ?? "";
+        if (itemSize !== filters.size) return false;
+      }
+      return true;
+    })
+    .map((item) => {
+      const unitCost = item.unitCostAtDelivery != null ? Number(item.unitCostAtDelivery) : 0;
+      const size = item.product.size;
+      if (size) {
+        sizeSet.add(size);
+        const key = item.product.id;
+        if (!productSizeMap.has(key)) productSizeMap.set(key, new Set());
+        productSizeMap.get(key)!.add(size);
+      }
+      return {
+        id: item.id,
+        date: item.delivery.deliveredAt,
+        workerName: item.delivery.worker.name,
+        workerMatricula: item.delivery.worker.matricula,
+        projectName: item.delivery.project?.name ?? "Sem contrato",
+        productName: item.product.name,
+        productSize: size,
+        quantity: item.quantity,
+        unitCost,
+        total: unitCost * item.quantity,
+        reason: item.reason,
+      };
+    });
+
+  const filteredProducts = filters?.size
+    ? allProducts.filter((p) => productSizeMap.get(p.id)?.has(filters.size!))
+    : allProducts;
+
+  const totalItems = rows.reduce((s, r) => s + r.quantity, 0);
+  const totalSpent = rows.reduce((s, r) => s + r.total, 0);
+
+  return {
+    generatedAt: now,
+    filters: {
+      productId: filters?.productId,
+      size: filters?.size,
+      projectId: filters?.projectId,
+      from: filters?.from,
+      to: filters?.to,
+    },
+    totals: { totalItems, totalSpent, totalRows: rows.length },
+    rows,
+    products: filteredProducts,
+    sizes: [...sizeSet].sort(),
+    projects: allProjects,
+  };
+}
+
 export async function getSpendingReport(period?: SpendingPeriod): Promise<SpendingReport> {
   const deliveries = await prisma.delivery.findMany({
     where: { status: { not: "CANCELLED" } },
