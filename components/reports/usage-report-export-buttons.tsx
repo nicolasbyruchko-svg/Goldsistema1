@@ -98,6 +98,18 @@ function drawRow(page: PDFPage, font: PDFFont, row: UsageReport["rows"][number],
   return y - ROW_H;
 }
 
+function drawTotals(page: PDFPage, font: PDFFont, boldFont: PDFFont, report: UsageReport, y: number): number {
+  y -= 4;
+  page.drawLine({ start: { x: MARGIN, y }, end: { x: PAGE_W - MARGIN, y }, thickness: 0.8, color: rgb(0.5, 0.5, 0.5) });
+  y -= 14;
+
+  page.drawText("TOTAL", { x: COLS[0].x, y, size: 9, font: boldFont, color: rgb(0.1, 0.2, 0.4) });
+  page.drawText(String(report.totals.totalItems), { x: COLS[5].x, y, size: 9, font: boldFont, color: rgb(0.1, 0.2, 0.4) });
+  page.drawText(formatCurrency(report.totals.totalSpent), { x: COLS[7].x, y, size: 9, font: boldFont, color: rgb(0.05, 0.4, 0.25) });
+
+  return y - ROW_H;
+}
+
 async function buildPdf(report: UsageReport): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -132,6 +144,8 @@ async function buildPdf(report: UsageReport): Promise<Uint8Array> {
       y = drawRow(page, font, row, y);
     }
   }
+
+  y = drawTotals(doc.getPages()[doc.getPageCount() - 1], font, boldFont, report, y);
 
   return doc.save();
 }

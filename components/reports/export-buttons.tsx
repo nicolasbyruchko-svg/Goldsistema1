@@ -100,7 +100,18 @@ function drawSection(
     p.drawText(formatCurrency(row.total), { x: COLS[3].x, y, size: 9, font, color: rgb(0.05, 0.4, 0.25) });
     y -= ROW_H;
   }
-  return { y: y - 16 };
+
+  const totalItems = rows.reduce((s, r) => s + r.itemCount, 0);
+  const totalSpent = rows.reduce((s, r) => s + r.total, 0);
+  y -= 4;
+  const p = doc.getPages()[doc.getPageCount() - 1];
+  p.drawLine({ start: { x: MARGIN, y }, end: { x: PAGE_W - MARGIN, y }, thickness: 0.8, color: rgb(0.5, 0.5, 0.5) });
+  y -= 14;
+  p.drawText("TOTAL", { x: COLS[0].x, y, size: 9, font: boldFont, color: rgb(0.1, 0.2, 0.4) });
+  p.drawText(String(totalItems), { x: COLS[2].x, y, size: 9, font: boldFont, color: rgb(0.1, 0.2, 0.4) });
+  p.drawText(formatCurrency(totalSpent), { x: COLS[3].x, y, size: 9, font: boldFont, color: rgb(0.05, 0.4, 0.25) });
+
+  return { y: y - ROW_H - 16 };
 }
 
 async function buildPdf(report: SpendingReport): Promise<Uint8Array> {
