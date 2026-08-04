@@ -8,7 +8,7 @@ import {
   AlertTriangle,
   Clock,
   ArrowRight,
-  ShieldAlert,
+  Boxes,
   TrendingUp,
   CalendarRange,
   Building2,
@@ -68,9 +68,19 @@ export default async function DashboardPage() {
     ]);
 
   const totalStockItems = products.reduce((acc, p) => acc + p.stockQuantity, 0);
-  const lowStockProducts = products
-    .filter((p) => p.stockQuantity <= p.minStock)
-    .sort((a, b) => a.stockQuantity - b.stockQuantity);
+
+  const stockByPiece = products.reduce<Record<string, (typeof products)[number][]>>((acc, p) => {
+    (acc[p.name] ??= []).push(p);
+    return acc;
+  }, {});
+  const pieces = Object.entries(stockByPiece)
+    .map(([name, variants]) => ({
+      name,
+      variants: [...variants].sort((a, b) => (a.size ?? "").localeCompare(b.size ?? "")),
+      total: variants.reduce((s, v) => s + v.stockQuantity, 0),
+      hasCritical: variants.some((v) => v.stockQuantity <= v.minStock),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const topContracts = spending.byProject.slice(0, 6);
   const maxContractSpend = Math.max(1, ...topContracts.map((c) => c.total));
@@ -553,7 +563,7 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Alertas de Estoque */}
+        {/* Estoque Disponível */}
         <div
           style={{
             backgroundColor: "#ffffff",
@@ -569,71 +579,117 @@ export default async function DashboardPage() {
               borderBottom: "1px solid var(--gray-200)",
               display: "flex",
               alignItems: "center",
-              gap: "10px",
-              backgroundColor: lowStockProducts.length > 0 ? "#fffbeb" : "transparent",
+              justifyContent: "space-between",
             }}
           >
-            <ShieldAlert size={18} style={{ color: lowStockProducts.length > 0 ? "#d97706" : "var(--navy-800)" }} />
-            <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--navy-900)", margin: 0 }}>
-              Atenção de Estoque
-            </h2>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <Boxes size={18} style={{ color: "var(--navy-800)" }} />
+              <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--navy-900)", margin: 0 }}>
+                Estoque Disponível
+              </h2>
+            </div>
+            <Link
+              href="/stock"
+              style={{
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "#0284c7",
+                textDecoration: "none",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              Ver estoque <ArrowRight size={14} />
+            </Link>
           </div>
 
           <div style={{ padding: "16px 24px" }}>
-            {lowStockProducts.length === 0 ? (
+            {pieces.length === 0 ? (
               <div style={{ textAlign: "center", color: "var(--gray-400)", padding: "30px 0" }}>
-                <p style={{ fontSize: "14px", margin: 0 }}>Estoque saudável.</p>
-                <p style={{ fontSize: "12px", marginTop: "4px" }}>Nenhum item abaixo do mínimo.</p>
+                <p style={{ fontSize: "14px", margin: 0 }}>Nenhum item cadastrado no estoque.</p>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                {lowStockProducts.slice(0, 6).map((product) => (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {pieces.map((piece) => (
                   <div
-                    key={product.id}
+                    key={piece.name}
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "12px",
-                      backgroundColor: "#fef2f2",
-                      border: "1px solid #fee2e2",
-                      borderRadius: "8px",
+                      border: "1px solid var(--gray-200)",
+                      borderRadius: "10px",
+                      overflow: "hidden",
                     }}
                   >
-                    <div>
-                      <p style={{ fontSize: "13px", fontWeight: 600, color: "#991b1b", margin: 0 }}>
-                        {product.name}
-                      </p>
-                      <p style={{ fontSize: "12px", color: "#b91c1c", margin: "2px 0 0 0", fontFamily: "monospace" }}>
-                        {product.sku}
-                      </p>
+                    <div
+                      style={{
+                        padding: "12px 16px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "12px",
+                        backgroundColor: piece.hasCritical ? "#fffbeb" : "var(--gray-50)",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                        <span
+                          style={{
+                            flexShrink: 0,
+                            padding: "2px 8px",
+                            borderRadius: "999px",
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            backgroundColor: piece.variants[0].type === "EPI" ? "rgba(25,55,109,0.08)" : "#e0f2fe",
+                            color: piece.variants[0].type === "EPI" ? "var(--navy-800)" : "#0284c7",
+                          }}
+                        >
+                          {piece.variants[0].type === "EPI" ? "EPI" : "Uniforme"}
+                        </span>
+                        <p
+                          style={{
+                            fontSize: "13px",
+                            fontWeight: 600,
+                            color: "var(--gray-900)",
+                            margin: 0,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {piece.name}
+                        </p>
+                      </div>
+                      <span style={{ fontSize: "16px", fontWeight: 800, color: "var(--navy-900)", flexShrink: 0 }}>
+                        {piece.total}
+                      </span>
                     </div>
-                    <div style={{ textAlign: "right" }}>
-                      <p style={{ fontSize: "16px", fontWeight: 800, color: "#dc2626", margin: 0 }}>
-                        {product.stockQuantity}
-                      </p>
-                      <p style={{ fontSize: "11px", color: "#b91c1c", margin: 0 }}>
-                        Mínimo: {product.minStock}
-                      </p>
+                    <div style={{ padding: "10px 16px", display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                      {piece.variants.map((v) => {
+                        const critical = v.stockQuantity <= v.minStock;
+                        return (
+                          <span
+                            key={v.id}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              padding: "4px 10px",
+                              borderRadius: "8px",
+                              fontSize: "12px",
+                              fontWeight: 600,
+                              backgroundColor: critical ? "#fef2f2" : "#f3f4f6",
+                              border: critical ? "1px solid #fecaca" : "1px solid var(--gray-200)",
+                              color: critical ? "#dc2626" : "var(--gray-700)",
+                            }}
+                          >
+                            {v.size || "Único"}
+                            <span style={{ fontWeight: 800, fontSize: "14px" }}>{v.stockQuantity}</span>
+                            {critical && <AlertTriangle size={12} style={{ color: "#f59e0b" }} strokeWidth={2.5} />}
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
-                {lowStockProducts.length > 6 && (
-                  <Link
-                    href="/stock"
-                    style={{
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      color: "#dc2626",
-                      textAlign: "center",
-                      display: "block",
-                      marginTop: "8px",
-                      textDecoration: "none",
-                    }}
-                  >
-                    + {lowStockProducts.length - 6} itens em alerta
-                  </Link>
-                )}
               </div>
             )}
           </div>
