@@ -236,7 +236,9 @@ export function UsageReportFilters({
         borderRadius: "14px",
         border: "1px solid var(--gray-200)",
         boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
-        overflow: "hidden",
+        overflow: "visible",
+        position: "relative",
+        zIndex: 1,
       }}
     >
       <div
