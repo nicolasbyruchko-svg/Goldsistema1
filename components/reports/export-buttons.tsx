@@ -6,8 +6,8 @@ import { Download, FileDown, Loader2 } from "lucide-react";
 import type { SpendingReport, SpendingRow } from "@/actions/reports-actions";
 import { formatCurrency } from "@/lib/utils";
 
-const PAGE_W = 612;
-const PAGE_H = 792;
+const PAGE_W = 792;
+const PAGE_H = 612;
 const MARGIN = 40;
 const ROW_H = 15;
 const BOTTOM_BREAK = 70;
@@ -52,9 +52,9 @@ function downloadBlob(content: BlobPart, filename: string, mime: string) {
 
 const COLS = [
   { label: "ITEM", x: MARGIN },
-  { label: "DETALHE", x: MARGIN + 230 },
-  { label: "ITENS", x: MARGIN + 390 },
-  { label: "GASTO", x: MARGIN + 445 },
+  { label: "DETALHE", x: MARGIN + 300 },
+  { label: "ITENS", x: MARGIN + 500 },
+  { label: "GASTO", x: MARGIN + 560 },
 ];
 
 function drawTableHead(page: PDFPage, font: PDFFont, y: number): number {
@@ -94,8 +94,8 @@ function drawSection(
       y = drawTableHead(np, font, PAGE_H - 50);
     }
     const p = doc.getPages()[doc.getPageCount() - 1];
-    p.drawText(trunc(row.label, 38), { x: COLS[0].x, y, size: 9, font, color: rgb(0.15, 0.15, 0.15) });
-    p.drawText(trunc(row.detail, 25), { x: COLS[1].x, y, size: 9, font, color: rgb(0.3, 0.3, 0.3) });
+    p.drawText(trunc(row.label, 50), { x: COLS[0].x, y, size: 9, font, color: rgb(0.15, 0.15, 0.15) });
+    p.drawText(trunc(row.detail, 35), { x: COLS[1].x, y, size: 9, font, color: rgb(0.3, 0.3, 0.3) });
     p.drawText(String(row.itemCount), { x: COLS[2].x, y, size: 9, font, color: rgb(0.3, 0.3, 0.3) });
     p.drawText(formatCurrency(row.total), { x: COLS[3].x, y, size: 9, font, color: rgb(0.05, 0.4, 0.25) });
     y -= ROW_H;

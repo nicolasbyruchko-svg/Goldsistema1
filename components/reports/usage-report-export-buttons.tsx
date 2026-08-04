@@ -6,8 +6,8 @@ import { Download, FileDown, Loader2 } from "lucide-react";
 import type { UsageReport } from "@/actions/reports-actions";
 import { formatCurrency, formatReason } from "@/lib/utils";
 
-const PAGE_W = 612;
-const PAGE_H = 792;
+const PAGE_W = 792;
+const PAGE_H = 612;
 const MARGIN = 40;
 const ROW_H = 16;
 const BOTTOM_BREAK = 70;
@@ -62,14 +62,14 @@ function downloadBlob(content: BlobPart, filename: string, mime: string) {
 
 const COLS = [
   { label: "DATA", x: MARGIN },
-  { label: "COLABORADOR", x: MARGIN + 52 },
-  { label: "CONTRATO", x: MARGIN + 152 },
-  { label: "PEÇA", x: MARGIN + 242 },
-  { label: "TAM.", x: MARGIN + 332 },
-  { label: "QTD", x: MARGIN + 367 },
-  { label: "CUSTO UNIT.", x: MARGIN + 397 },
-  { label: "TOTAL", x: MARGIN + 462 },
-  { label: "MOTIVO", x: MARGIN + 510 },
+  { label: "COLABORADOR", x: MARGIN + 70 },
+  { label: "CONTRATO", x: MARGIN + 190 },
+  { label: "PEÇA", x: MARGIN + 310 },
+  { label: "TAM.", x: MARGIN + 430 },
+  { label: "QTD", x: MARGIN + 470 },
+  { label: "CUSTO UNIT.", x: MARGIN + 510 },
+  { label: "TOTAL", x: MARGIN + 590 },
+  { label: "MOTIVO", x: MARGIN + 650 },
 ];
 
 function drawTableHead(page: PDFPage, font: PDFFont, y: number): number {
@@ -87,14 +87,14 @@ function trunc(text: string, max: number): string {
 
 function drawRow(page: PDFPage, font: PDFFont, row: UsageReport["rows"][number], y: number): number {
   page.drawText(new Date(row.date).toLocaleDateString("pt-BR"), { x: COLS[0].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
-  page.drawText(trunc(row.workerName, 18), { x: COLS[1].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
-  page.drawText(trunc(row.projectName, 16), { x: COLS[2].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
-  page.drawText(trunc(row.productName, 16), { x: COLS[3].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
+  page.drawText(trunc(row.workerName, 20), { x: COLS[1].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
+  page.drawText(trunc(row.projectName, 20), { x: COLS[2].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
+  page.drawText(trunc(row.productName, 20), { x: COLS[3].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
   page.drawText(row.productSize || "Único", { x: COLS[4].x, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) });
   page.drawText(String(row.quantity), { x: COLS[5].x, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) });
   page.drawText(formatCurrency(row.unitCost), { x: COLS[6].x, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) });
   page.drawText(formatCurrency(row.total), { x: COLS[7].x, y, size: 8, font, color: rgb(0.05, 0.4, 0.25) });
-  page.drawText(trunc(formatReason(row.reason), 8), { x: COLS[8].x, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) });
+  page.drawText(trunc(formatReason(row.reason), 12), { x: COLS[8].x, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) });
   return y - ROW_H;
 }
 
