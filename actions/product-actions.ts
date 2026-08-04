@@ -88,3 +88,22 @@ export async function updateProduct(id: string, rawData: ProductFormValues) {
     return { success: false as const, error: "Erro ao atualizar produto" };
   }
 }
+
+export async function deleteProduct(id: string) {
+  try {
+    await prisma.product.delete({ where: { id } });
+    revalidatePath("/stock");
+    revalidatePath("/dashboard");
+    return { success: true as const };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "";
+    if (msg.includes("Foreign key constraint failed") || msg.includes("P2003")) {
+      return {
+        success: false as const,
+        error:
+          "Este produto possui entregas, compras ou devoluções vinculadas e não pode ser excluído. Zere o estoque para retirá-lo do catálogo.",
+      };
+    }
+    return { success: false as const, error: "Erro ao excluir produto" };
+  }
+}

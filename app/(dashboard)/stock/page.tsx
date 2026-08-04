@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getProducts } from "@/actions/product-actions";
 import { NewProductButton } from "@/components/stock/new-product-button";
 import { EditProductButton } from "@/components/stock/edit-product-button";
+import { DeleteProductButton } from "@/components/stock/delete-product-button";
 import { Package, AlertTriangle, ShieldCheck, Shirt } from "lucide-react";
 import { formatDate, formatCurrency } from "@/lib/utils";
 
@@ -169,7 +170,10 @@ export default async function StockPage() {
                         {product.minStock}
                       </td>
                       <td style={{ padding: "14px 20px" }}>
-                        <EditProductButton product={product} />
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <EditProductButton product={product} />
+                          <DeleteProductButton product={product} />
+                        </div>
                       </td>
                     </tr>
                   );
