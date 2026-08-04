@@ -129,7 +129,7 @@ async function buildPdf(report: SpendingReport): Promise<Uint8Array> {
   const logoH = (logoImage.height / logoImage.width) * logoW;
   page.drawImage(logoImage, { x: MARGIN, y: y - logoH + 10, width: logoW, height: logoH });
 
-  y -= 22;
+  y -= 38;
 
   const summary = `Gasto Total: ${formatCurrency(report.totals.totalSpent)}   |   Período: ${formatCurrency(report.totals.periodSpent)}   |   Itens: ${report.totals.totalItems}   |   Entregas: ${report.totals.totalDeliveries}`;
   page.drawText(summary, { x: MARGIN, y, size: 9, font, color: rgb(0.4, 0.4, 0.4) });

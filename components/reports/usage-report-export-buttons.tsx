@@ -125,7 +125,7 @@ async function buildPdf(report: UsageReport): Promise<Uint8Array> {
   const logoH = (logoImage.height / logoImage.width) * logoW;
   page.drawImage(logoImage, { x: MARGIN, y: y - logoH + 10, width: logoW, height: logoH });
 
-  y -= 22;
+  y -= 38;
 
   const parts: string[] = [];
   if (report.filters.size) parts.push(`Tamanho: ${report.filters.size}`);
