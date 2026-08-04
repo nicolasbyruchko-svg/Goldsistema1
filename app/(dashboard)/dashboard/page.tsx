@@ -402,45 +402,87 @@ export default async function DashboardPage() {
                       <span style={{ fontSize: "18px", fontWeight: 800, color: "var(--navy-900)" }}>
                         {piece.total}
                       </span>
-                      <div style={{ display: "flex", gap: "6px", marginTop: "2px", justifyContent: "flex-end" }}>
+                      <div style={{ display: "flex", gap: "6px", marginTop: "4px", justifyContent: "flex-end" }}>
                         {piece.novoCount > 0 && (
-                          <span style={{ fontSize: "10px", fontWeight: 600, color: "#059669", backgroundColor: "#d1fae5", padding: "1px 5px", borderRadius: "4px" }}>
+                          <span style={{ fontSize: "11px", fontWeight: 700, color: "#059669", backgroundColor: "#d1fae5", padding: "2px 8px", borderRadius: "6px", border: "1px solid #a7f3d0" }}>
                             {piece.novoCount} novo{piece.novoCount !== 1 ? "s" : ""}
                           </span>
                         )}
                         {piece.higienizadoCount > 0 && (
-                          <span style={{ fontSize: "10px", fontWeight: 600, color: "#0284c7", backgroundColor: "#e0f2fe", padding: "1px 5px", borderRadius: "4px" }}>
-                            {piece.higienizadoCount} hig.
+                          <span style={{ fontSize: "11px", fontWeight: 700, color: "#0284c7", backgroundColor: "#e0f2fe", padding: "2px 8px", borderRadius: "6px", border: "1px solid #bae6fd" }}>
+                            {piece.higienizadoCount} higienizado{piece.higienizadoCount !== 1 ? "s" : ""}
                           </span>
                         )}
                       </div>
                     </div>
                   </div>
-                  <div style={{ padding: "10px 14px", display: "flex", flexWrap: "wrap", gap: "6px", flex: 1, alignContent: "flex-start" }}>
-                    {piece.variants.map((v) => {
-                      const critical = v.stockQuantity <= v.minStock;
-                      return (
-                        <span
-                          key={v.id}
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "5px",
-                            padding: "3px 9px",
-                            borderRadius: "8px",
-                            fontSize: "11px",
-                            fontWeight: 600,
-                            backgroundColor: critical ? "#fef2f2" : "#f3f4f6",
-                            border: critical ? "1px solid #fecaca" : "1px solid var(--gray-200)",
-                            color: critical ? "#dc2626" : "var(--gray-700)",
-                          }}
-                        >
-                          {v.size || "Único"}
-                          <span style={{ fontWeight: 800, fontSize: "13px" }}>{v.stockQuantity}</span>
-                          {critical && <AlertTriangle size={11} style={{ color: "#f59e0b" }} strokeWidth={2.5} />}
+                  <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", gap: "8px", flex: 1 }}>
+                    {piece.novoCount > 0 && (
+                      <div>
+                        <span style={{ display: "block", fontSize: "10px", fontWeight: 700, color: "#059669", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>
+                          Novos
                         </span>
-                      );
-                    })}
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                          {piece.variants.filter((v) => v.condition === "NOVO").map((v) => {
+                            const critical = v.stockQuantity <= v.minStock;
+                            return (
+                              <span
+                                key={v.id}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  padding: "4px 10px",
+                                  borderRadius: "8px",
+                                  fontSize: "12px",
+                                  fontWeight: 600,
+                                  backgroundColor: critical ? "#fef2f2" : "#ecfdf5",
+                                  border: critical ? "1px solid #fecaca" : "1px solid #a7f3d0",
+                                  color: critical ? "#dc2626" : "#065f46",
+                                }}
+                              >
+                                {v.size || "Único"}
+                                <span style={{ fontWeight: 800 }}>{v.stockQuantity}</span>
+                                {critical && <AlertTriangle size={11} style={{ color: "#f59e0b" }} strokeWidth={2.5} />}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    {piece.higienizadoCount > 0 && (
+                      <div>
+                        <span style={{ display: "block", fontSize: "10px", fontWeight: 700, color: "#0284c7", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>
+                          Higienizados
+                        </span>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                          {piece.variants.filter((v) => v.condition === "HIGIENIZADO").map((v) => {
+                            const critical = v.stockQuantity <= v.minStock;
+                            return (
+                              <span
+                                key={v.id}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  padding: "4px 10px",
+                                  borderRadius: "8px",
+                                  fontSize: "12px",
+                                  fontWeight: 600,
+                                  backgroundColor: critical ? "#fef2f2" : "#f0f9ff",
+                                  border: critical ? "1px solid #fecaca" : "1px solid #bae6fd",
+                                  color: critical ? "#dc2626" : "#0c4a6e",
+                                }}
+                              >
+                                {v.size || "Único"}
+                                <span style={{ fontWeight: 800 }}>{v.stockQuantity}</span>
+                                {critical && <AlertTriangle size={11} style={{ color: "#f59e0b" }} strokeWidth={2.5} />}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
