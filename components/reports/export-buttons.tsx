@@ -6,6 +6,11 @@ import { Download, FileDown, Loader2 } from "lucide-react";
 import type { SpendingReport, SpendingRow } from "@/actions/reports-actions";
 import { formatCurrency } from "@/lib/utils";
 
+const PAGE_W = 612;
+const PAGE_H = 792;
+const MARGIN = 40;
+const BOTTOM_MARGIN = 60;
+
 function csvCell(value: string | number): string {
   const str = String(value);
   return /[",;\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
@@ -45,6 +50,32 @@ function downloadBlob(content: BlobPart, filename: string, mime: string) {
   URL.revokeObjectURL(url);
 }
 
+function drawTableHeader(
+  page: PDFPage,
+  font: PDFFont,
+  cols: { label: string; x: number }[],
+  y: number
+): number {
+  for (const col of cols) {
+    page.drawText(col.label, { x: col.x, y, size: 8, font, color: rgb(0.4, 0.4, 0.4) });
+  }
+  y -= 6;
+  page.drawLine({
+    start: { x: MARGIN, y },
+    end: { x: PAGE_W - MARGIN, y },
+    thickness: 0.5,
+    color: rgb(0.8, 0.8, 0.8),
+  });
+  return y - 10;
+}
+
+function ensurePage(doc: PDFDocument, font: PDFFont, y: number, cols: { label: string; x: number }[]): { page: PDFPage; y: number } {
+  if (y > BOTTOM_MARGIN) return { page: doc.getPages()[doc.getPageCount() - 1], y };
+  const page = doc.addPage([PAGE_W, PAGE_H]);
+  const newY = drawTableHeader(page, font, cols, PAGE_H - 50);
+  return { page, y: newY };
+}
+
 function drawSection(
   doc: PDFDocument,
   page: PDFPage,
@@ -52,56 +83,71 @@ function drawSection(
   boldFont: PDFFont,
   title: string,
   rows: SpendingRow[],
-  labelCol: string,
-  detailCol: string,
+  cols: { label: string; x: number }[],
   y: number
-): number {
-  const width = page.getWidth();
-  const margin = 40;
-  const detailX = width - margin - 200;
-  const itemsX = width - margin - 130;
-  const totalX = width - margin - 70;
+): { page: PDFPage; y: number } {
+  page.drawText(title, { x: MARGIN, y, size: 11, font: boldFont, color: rgb(0.1, 0.2, 0.4) });
+  y -= 16;
 
-  page.drawText(title, { x: margin, y, size: 12, font: boldFont, color: rgb(0.1, 0.2, 0.4) });
-  y -= 18;
+  const result = ensurePage(doc, font, y, cols);
+  page = result.page;
+  y = result.y;
 
-  page.drawText(labelCol.toUpperCase(), { x: margin, y, size: 8, font: boldFont, color: rgb(0.4, 0.4, 0.4) });
-  page.drawText(detailCol.toUpperCase(), { x: detailX, y, size: 8, font: boldFont, color: rgb(0.4, 0.4, 0.4) });
-  page.drawText("ITENS", { x: itemsX, y, size: 8, font: boldFont, color: rgb(0.4, 0.4, 0.4) });
-  page.drawText("GASTO", { x: totalX, y, size: 8, font: boldFont, color: rgb(0.4, 0.4, 0.4) });
-  y -= 14;
+  y = drawTableHeader(page, font, cols, y);
+
+  const labelX = cols[0].x;
+  const detailX = cols[1].x;
+  const itemsX = cols[2].x;
+  const totalX = cols[3].x;
 
   for (const row of rows) {
-    if (y < 50) {
-      page = doc.addPage([width, 612]);
-      y = 570;
+    const check = ensurePage(doc, font, y, cols);
+    if (check.page !== page) {
+      page = check.page;
+      y = check.y;
     }
-    page.drawText(row.label, { x: margin, y, size: 9, font, color: rgb(0.15, 0.15, 0.15) });
+
+    page.drawText(row.label, { x: labelX, y, size: 9, font, color: rgb(0.15, 0.15, 0.15) });
     page.drawText(row.detail, { x: detailX, y, size: 9, font, color: rgb(0.3, 0.3, 0.3) });
     page.drawText(String(row.itemCount), { x: itemsX, y, size: 9, font, color: rgb(0.3, 0.3, 0.3) });
     page.drawText(formatCurrency(row.total), { x: totalX, y, size: 9, font, color: rgb(0.05, 0.4, 0.25) });
-    y -= 14;
+    y -= 15;
   }
-  return y - 12;
+  return { page, y: y - 16 };
 }
 
 async function buildPdf(report: SpendingReport): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
-  const page = doc.addPage([612, 612]);
+  const page = doc.addPage([PAGE_W, PAGE_H]);
 
-  page.drawText("Relatório de Gastos com EPIs e Uniformes", { x: 40, y: 575, size: 16, font: boldFont, color: rgb(0.1, 0.2, 0.4) });
-  page.drawText(`Gerado em: ${report.generatedAt.toLocaleString("pt-BR")}`, { x: 40, y: 558, size: 10, font, color: rgb(0.35, 0.35, 0.35) });
+  page.drawText("Relatório de Gastos com EPIs e Uniformes", { x: MARGIN, y: PAGE_H - 45, size: 16, font: boldFont, color: rgb(0.1, 0.2, 0.4) });
+  page.drawText(`Gerado em: ${report.generatedAt.toLocaleString("pt-BR")}`, { x: MARGIN, y: PAGE_H - 63, size: 10, font, color: rgb(0.35, 0.35, 0.35) });
   page.drawText(
     `Gasto Total: ${formatCurrency(report.totals.totalSpent)}   |   Gasto no período: ${formatCurrency(report.totals.periodSpent)}   |   Itens: ${report.totals.totalItems}   |   Entregas: ${report.totals.totalDeliveries}`,
-    { x: 40, y: 540, size: 10, font, color: rgb(0.2, 0.2, 0.2) }
+    { x: MARGIN, y: PAGE_H - 80, size: 10, font, color: rgb(0.2, 0.2, 0.2) }
   );
 
-  let y = 505;
-  y = drawSection(doc, page, font, boldFont, "Gasto por Contrato", report.byProject, "Contrato", "Centro de Custo", y);
-  y = drawSection(doc, page, font, boldFont, "Gasto por Colaborador", report.byWorker, "Colaborador", "Matrícula", y);
-  drawSection(doc, page, font, boldFont, "Gasto por Motivo", report.byReason, "Motivo", "Código", y);
+  const cols = [
+    { label: "CONTRATO / COLABORADOR / MOTIVO", x: MARGIN },
+    { label: "DETALHE", x: MARGIN + 230 },
+    { label: "ITENS", x: MARGIN + 380 },
+    { label: "GASTO", x: MARGIN + 440 },
+  ];
+
+  let y = PAGE_H - 115;
+  let currentPage = page;
+
+  let result = drawSection(doc, currentPage, font, boldFont, "Gasto por Contrato", report.byProject, cols, y);
+  currentPage = result.page;
+  y = result.y;
+
+  result = drawSection(doc, currentPage, font, boldFont, "Gasto por Colaborador", report.byWorker, cols, y);
+  currentPage = result.page;
+  y = result.y;
+
+  result = drawSection(doc, currentPage, font, boldFont, "Gasto por Motivo", report.byReason, cols, y);
 
   return doc.save();
 }
