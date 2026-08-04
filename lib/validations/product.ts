@@ -5,10 +5,6 @@ export const productSchema = z.object({
     .string()
     .min(2, "Nome deve ter ao menos 2 caracteres")
     .max(100, "Nome muito longo"),
-  sku: z
-    .string()
-    .min(1, "SKU é obrigatório")
-    .max(50, "SKU muito longo"),
   type: z.enum(["EPI", "UNIFORM"], {
     required_error: "Selecione o tipo",
   }),
@@ -24,11 +20,11 @@ export const productSchema = z.object({
     .optional(),
   supplier: z.string().max(120, "Fornecedor muito longo").optional(),
   stockQuantity: z
-    .number({ invalid_type_error: "Informe a quantidade" })
+    .number()
     .int("Deve ser inteiro")
     .min(0, "Quantidade não pode ser negativa"),
   minStock: z
-    .number({ invalid_type_error: "Informe o estoque mínimo" })
+    .number()
     .int("Deve ser inteiro")
     .min(0, "Estoque mínimo não pode ser negativo"),
 });

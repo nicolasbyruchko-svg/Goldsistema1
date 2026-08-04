@@ -34,7 +34,7 @@ export async function createProduct(rawData: ProductFormValues) {
     const product = await prisma.product.create({
       data: {
         name: data.name.trim(),
-        sku: data.sku.trim().toUpperCase(),
+        sku: `SKU-${Date.now()}`,
         type: data.type,
         condition: data.condition,
         size: data.size?.trim() || null,
@@ -42,8 +42,8 @@ export async function createProduct(rawData: ProductFormValues) {
         caValidity: data.caValidity ? new Date(data.caValidity) : null,
         unitCost: data.unitCost != null && data.unitCost > 0 ? data.unitCost : null,
         supplier: data.supplier?.trim() || null,
-        stockQuantity: data.stockQuantity,
-        minStock: data.minStock,
+        stockQuantity: data.stockQuantity ?? 0,
+        minStock: data.minStock ?? 5,
       },
     });
     revalidatePath("/stock");
@@ -69,11 +69,12 @@ export async function updateProduct(id: string, rawData: ProductFormValues) {
   const data = parsed.data;
 
   try {
+    const existingProduct = await prisma.product.findUnique({ where: { id } });
     const product = await prisma.product.update({
       where: { id },
       data: {
         name: data.name.trim(),
-        sku: data.sku.trim().toUpperCase(),
+        sku: existingProduct?.sku || `SKU-${Date.now()}`,
         type: data.type,
         condition: data.condition,
         size: data.size?.trim() || null,
@@ -81,8 +82,8 @@ export async function updateProduct(id: string, rawData: ProductFormValues) {
         caValidity: data.caValidity ? new Date(data.caValidity) : null,
         unitCost: data.unitCost != null && data.unitCost > 0 ? data.unitCost : null,
         supplier: data.supplier?.trim() || null,
-        stockQuantity: data.stockQuantity,
-        minStock: data.minStock,
+        stockQuantity: data.stockQuantity ?? 0,
+        minStock: data.minStock ?? 5,
       },
     });
     revalidatePath("/stock");

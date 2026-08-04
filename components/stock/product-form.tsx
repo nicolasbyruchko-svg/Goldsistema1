@@ -40,7 +40,6 @@ export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) 
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: product?.name ?? "",
-      sku: product?.sku ?? "",
       type: (product?.type ?? "EPI") as ProductFormValues["type"],
       condition: (product?.condition ?? "NOVO") as ProductFormValues["condition"],
       size: product?.size ?? "",
@@ -71,29 +70,16 @@ export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
       <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-        {/* Nome + SKU */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "16px" }}>
-          <div>
-            <Label htmlFor="prod-name" required>Nome do Produto</Label>
-            <Input
-              id="prod-name"
-              placeholder="Ex: Capacete de Segurança"
-              error={errors.name?.message}
-              {...register("name")}
-            />
-            <FieldError message={errors.name?.message} />
-          </div>
-          <div>
-            <Label htmlFor="prod-sku" required>SKU</Label>
-            <Input
-              id="prod-sku"
-              placeholder="CAP-001"
-              error={errors.sku?.message}
-              style={{ width: "120px" }}
-              {...register("sku")}
-            />
-            <FieldError message={errors.sku?.message} />
-          </div>
+        {/* Nome */}
+        <div>
+          <Label htmlFor="prod-name" required>Nome do Produto</Label>
+          <Input
+            id="prod-name"
+            placeholder="Ex: Capacete de Segurança"
+            error={errors.name?.message}
+            {...register("name")}
+          />
+          <FieldError message={errors.name?.message} />
         </div>
 
         {/* Tipo + Condição */}
@@ -174,7 +160,7 @@ export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) 
         {/* Estoque */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
           <div>
-            <Label htmlFor="prod-stock" required>Qtd. em Estoque</Label>
+            <Label htmlFor="prod-stock">Qtd. em Estoque</Label>
             <Input
               id="prod-stock"
               type="number"
