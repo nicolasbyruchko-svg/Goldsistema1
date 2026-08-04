@@ -42,7 +42,6 @@ export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) 
       name: product?.name ?? "",
       sku: product?.sku ?? "",
       type: (product?.type ?? "EPI") as ProductFormValues["type"],
-      condition: (product?.condition ?? "NOVO") as ProductFormValues["condition"],
       size: product?.size ?? "",
       caNumber: product?.caNumber ?? "",
       caValidity: toDateInput(product?.caValidity),
@@ -96,7 +95,7 @@ export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) 
           </div>
         </div>
 
-        {/* Tipo + Condição */}
+        {/* Tipo + Tamanho */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
           <div>
             <Label htmlFor="prod-type" required>Tipo</Label>
@@ -113,29 +112,13 @@ export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) 
             <FieldError message={errors.type?.message} />
           </div>
           <div>
-            <Label htmlFor="prod-condition" required>Condição</Label>
-            <Controller
-              name="condition"
-              control={control}
-              render={({ field }) => (
-                <Select id="prod-condition" error={errors.condition?.message} {...field}>
-                  <option value="NOVO">Novo</option>
-                  <option value="HIGIENIZADO">Higienizado</option>
-                </Select>
-              )}
+            <Label htmlFor="prod-size">Tamanho</Label>
+            <Input
+              id="prod-size"
+              placeholder="Ex: M, G, 42, 44..."
+              {...register("size")}
             />
-            <FieldError message={errors.condition?.message} />
           </div>
-        </div>
-
-        {/* Tamanho */}
-        <div>
-          <Label htmlFor="prod-size">Tamanho</Label>
-          <Input
-            id="prod-size"
-            placeholder="Ex: M, G, 42, 44..."
-            {...register("size")}
-          />
         </div>
 
         {/* CA (apenas para EPI) */}

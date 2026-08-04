@@ -345,7 +345,7 @@ export default async function DashboardPage() {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
                 <thead>
                   <tr style={{ backgroundColor: "var(--gray-50)", borderBottom: "1px solid var(--gray-200)" }}>
-                    {["Produto", "Tamanho", "SKU", "Tipo", "Condição", "Estoque", "Mín."].map((col) => (
+                    {["Produto", "Tamanho", "SKU", "Tipo", "Estoque", "Mín."].map((col) => (
                       <th
                         key={col}
                         style={{
@@ -406,38 +406,22 @@ export default async function DashboardPage() {
                             {product.sku}
                           </span>
                         </td>
-                         <td style={{ padding: "12px 20px" }}>
-                           <span
-                             style={{
-                               display: "inline-flex",
-                               alignItems: "center",
-                               padding: "3px 10px",
-                               borderRadius: "999px",
-                               fontSize: "12px",
-                               fontWeight: 600,
-                               backgroundColor: product.type === "EPI" ? "rgba(25,55,109,0.08)" : "#e0f2fe",
-                               color: product.type === "EPI" ? "var(--navy-800)" : "#0284c7",
-                             }}
-                           >
-                             {product.type === "EPI" ? "EPI" : "Uniforme"}
-                           </span>
-                         </td>
-                         <td style={{ padding: "12px 20px" }}>
-                           <span
-                             style={{
-                               display: "inline-flex",
-                               alignItems: "center",
-                               padding: "3px 10px",
-                               borderRadius: "999px",
-                               fontSize: "12px",
-                               fontWeight: 600,
-                               backgroundColor: product.condition === "NOVO" ? "#d1fae5" : "#e0f2fe",
-                               color: product.condition === "NOVO" ? "#059669" : "#0284c7",
-                             }}
-                           >
-                             {product.condition === "NOVO" ? "Novo" : "Higienizado"}
-                           </span>
-                         </td>
+                        <td style={{ padding: "12px 20px" }}>
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              padding: "3px 10px",
+                              borderRadius: "999px",
+                              fontSize: "12px",
+                              fontWeight: 600,
+                              backgroundColor: product.type === "EPI" ? "rgba(25,55,109,0.08)" : "#e0f2fe",
+                              color: product.type === "EPI" ? "var(--navy-800)" : "#0284c7",
+                            }}
+                          >
+                            {product.type === "EPI" ? "EPI" : "Uniforme"}
+                          </span>
+                        </td>
                         <td style={{ padding: "12px 20px" }}>
                           <span
                             style={{
