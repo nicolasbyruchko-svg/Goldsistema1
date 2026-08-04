@@ -21,9 +21,14 @@ export default async function ReportsPage({
   const fromStr = typeof sp.from === "string" ? sp.from : "";
   const toStr = typeof sp.to === "string" ? sp.to : "";
 
-  const usageProductId = typeof sp.usageProductId === "string" ? sp.usageProductId : "";
+  const toArr = (v: string | string[] | undefined): string[] => {
+    if (!v) return [];
+    return Array.isArray(v) ? v.filter(Boolean) : v ? [v] : [];
+  };
+
+  const usageProductIds = toArr(sp.usageProductId);
   const usageSize = typeof sp.usageSize === "string" ? sp.usageSize : "";
-  const usageProjectId = typeof sp.usageProjectId === "string" ? sp.usageProjectId : "";
+  const usageProjectIds = toArr(sp.usageProjectId);
   const usageFromStr = typeof sp.usageFrom === "string" ? sp.usageFrom : "";
   const usageToStr = typeof sp.usageTo === "string" ? sp.usageTo : "";
 
@@ -33,9 +38,9 @@ export default async function ReportsPage({
       to: toStr ? new Date(toStr + "T23:59:59") : undefined,
     }),
     getUsageReport({
-      productId: usageProductId || undefined,
+      productIds: usageProductIds.length > 0 ? usageProductIds : undefined,
       size: usageSize || undefined,
-      projectId: usageProjectId || undefined,
+      projectIds: usageProjectIds.length > 0 ? usageProjectIds : undefined,
       from: usageFromStr ? new Date(usageFromStr + "T00:00:00") : undefined,
       to: usageToStr ? new Date(usageToStr + "T23:59:59") : undefined,
     }),
@@ -207,9 +212,9 @@ export default async function ReportsPage({
           sizes={usageReport.sizes}
           projects={usageReport.projects}
           currentFilters={{
-            productId: usageProductId,
+            productIds: usageProductIds,
             size: usageSize,
-            projectId: usageProjectId,
+            projectIds: usageProjectIds,
             from: usageFromStr,
             to: usageToStr,
           }}

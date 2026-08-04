@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Filter, X } from "lucide-react";
+import { Filter, X, ChevronDown, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 
@@ -11,12 +11,178 @@ interface UsageReportFiltersProps {
   sizes: string[];
   projects: { id: string; name: string }[];
   currentFilters: {
-    productId?: string;
-    size?: string;
-    projectId?: string;
-    from?: string;
-    to?: string;
+    productIds: string[];
+    size: string;
+    projectIds: string[];
+    from: string;
+    to: string;
   };
+}
+
+function MultiSelect({
+  label,
+  options,
+  selected,
+  onToggle,
+  placeholder,
+}: {
+  label: string;
+  options: { id: string; label: string }[];
+  selected: string[];
+  onToggle: (id: string) => void;
+  placeholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const selectedLabels = options.filter((o) => selected.includes(o.id));
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <label
+        style={{
+          display: "block",
+          fontSize: "11px",
+          color: "var(--gray-400)",
+          marginBottom: "4px",
+          fontWeight: 500,
+        }}
+      >
+        {label}
+      </label>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        style={{
+          width: "100%",
+          padding: "8px 32px 8px 10px",
+          fontSize: "13px",
+          fontFamily: "inherit",
+          color: selected.length > 0 ? "var(--gray-900)" : "var(--gray-400)",
+          backgroundColor: "#fff",
+          border: "1.5px solid var(--gray-200)",
+          borderRadius: "8px",
+          outline: "none",
+          cursor: "pointer",
+          textAlign: "left",
+          position: "relative",
+          boxSizing: "border-box",
+          transition: "border-color 0.15s, box-shadow 0.15s",
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.borderColor = "var(--navy-800)";
+          e.currentTarget.style.boxShadow = "0 0 0 3px rgba(25,55,109,0.1)";
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.borderColor = "var(--gray-200)";
+          e.currentTarget.style.boxShadow = "none";
+        }}
+      >
+        {selected.length === 0
+          ? placeholder
+          : selected.length === 1
+            ? selectedLabels[0]?.label
+            : `${selected.length} selecionado(s)`}
+        <ChevronDown
+          size={14}
+          style={{
+            position: "absolute",
+            right: "10px",
+            top: "50%",
+            transform: "translateY(-50%)",
+            color: "var(--gray-400)",
+            pointerEvents: "none",
+          }}
+        />
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
+            marginTop: "4px",
+            backgroundColor: "#fff",
+            border: "1px solid var(--gray-200)",
+            borderRadius: "10px",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+            zIndex: 50,
+            maxHeight: "220px",
+            overflowY: "auto",
+            padding: "6px",
+          }}
+        >
+          {options.length === 0 && (
+            <div style={{ padding: "12px 10px", fontSize: "12px", color: "var(--gray-400)", textAlign: "center" }}>
+              Nenhuma opção disponível
+            </div>
+          )}
+          {options.map((opt) => {
+            const isSelected = selected.includes(opt.id);
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => onToggle(opt.id)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  width: "100%",
+                  padding: "8px 10px",
+                  fontSize: "13px",
+                  fontFamily: "inherit",
+                  border: "none",
+                  borderRadius: "6px",
+                  backgroundColor: isSelected ? "rgba(25,55,109,0.06)" : "transparent",
+                  color: "var(--gray-800)",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  transition: "background-color 0.1s",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSelected) e.currentTarget.style.backgroundColor = "var(--gray-50)";
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSelected) e.currentTarget.style.backgroundColor = "transparent";
+                }}
+              >
+                <div
+                  style={{
+                    width: "16px",
+                    height: "16px",
+                    borderRadius: "4px",
+                    border: isSelected ? "2px solid var(--navy-800)" : "1.5px solid var(--gray-300)",
+                    backgroundColor: isSelected ? "var(--navy-800)" : "#fff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    transition: "all 0.1s",
+                  }}
+                >
+                  {isSelected && <Check size={11} style={{ color: "#fff" }} strokeWidth={3} />}
+                </div>
+                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {opt.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function UsageReportFilters({
@@ -26,41 +192,42 @@ export function UsageReportFilters({
   currentFilters,
 }: UsageReportFiltersProps) {
   const router = useRouter();
-  const [productId, setProductId] = useState(currentFilters.productId ?? "");
-  const [size, setSize] = useState(currentFilters.size ?? "");
-  const [projectId, setProjectId] = useState(currentFilters.projectId ?? "");
-  const [from, setFrom] = useState(currentFilters.from ?? "");
-  const [to, setTo] = useState(currentFilters.to ?? "");
+  const [productIds, setProductIds] = useState<string[]>(currentFilters.productIds);
+  const [size, setSize] = useState(currentFilters.size);
+  const [projectIds, setProjectIds] = useState<string[]>(currentFilters.projectIds);
+  const [from, setFrom] = useState(currentFilters.from);
+  const [to, setTo] = useState(currentFilters.to);
+
+  const toggleProduct = (id: string) => {
+    setProductIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const toggleProject = (id: string) => {
+    setProjectIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
 
   const apply = () => {
     const params = new URLSearchParams();
-    if (productId) params.set("usageProductId", productId);
+    productIds.forEach((id) => params.append("usageProductId", id));
     if (size) params.set("usageSize", size);
-    if (projectId) params.set("usageProjectId", projectId);
+    projectIds.forEach((id) => params.append("usageProjectId", id));
     if (from) params.set("usageFrom", from);
     if (to) params.set("usageTo", to);
     router.push(`/reports${params.toString() ? `?${params.toString()}` : ""}`);
   };
 
   const clear = () => {
-    setProductId("");
+    setProductIds([]);
     setSize("");
-    setProjectId("");
+    setProjectIds([]);
     setFrom("");
     setTo("");
     router.push("/reports");
   };
 
-  const hasFilter = Boolean(productId || size || projectId || from || to);
+  const hasFilter = productIds.length > 0 || Boolean(size) || projectIds.length > 0 || Boolean(from) || Boolean(to);
 
   const inputStyle = { width: "100%", padding: "8px 10px", fontSize: "13px" };
-  const labelStyle: React.CSSProperties = {
-    display: "block",
-    fontSize: "11px",
-    color: "var(--gray-400)",
-    marginBottom: "4px",
-    fontWeight: 500,
-  };
 
   return (
     <div
@@ -96,24 +263,26 @@ export function UsageReportFilters({
             alignItems: "end",
           }}
         >
-          <div>
-            <label style={labelStyle}>Peça</label>
-            <Select
-              value={productId}
-              onChange={(e) => setProductId(e.target.value)}
-              style={inputStyle}
-            >
-              <option value="">Todas as peças</option>
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}{p.size ? ` (${p.size})` : ""}
-                </option>
-              ))}
-            </Select>
-          </div>
+          <MultiSelect
+            label="Peça"
+            options={products.map((p) => ({ id: p.id, label: p.name + (p.size ? ` (${p.size})` : "") }))}
+            selected={productIds}
+            onToggle={toggleProduct}
+            placeholder="Todas as peças"
+          />
 
           <div>
-            <label style={labelStyle}>Tamanho</label>
+            <label
+              style={{
+                display: "block",
+                fontSize: "11px",
+                color: "var(--gray-400)",
+                marginBottom: "4px",
+                fontWeight: 500,
+              }}
+            >
+              Tamanho
+            </label>
             <Select
               value={size}
               onChange={(e) => setSize(e.target.value)}
@@ -128,24 +297,26 @@ export function UsageReportFilters({
             </Select>
           </div>
 
-          <div>
-            <label style={labelStyle}>Contrato</label>
-            <Select
-              value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
-              style={inputStyle}
-            >
-              <option value="">Todos os contratos</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </Select>
-          </div>
+          <MultiSelect
+            label="Contrato"
+            options={projects.map((p) => ({ id: p.id, label: p.name }))}
+            selected={projectIds}
+            onToggle={toggleProject}
+            placeholder="Todos os contratos"
+          />
 
           <div>
-            <label style={labelStyle}>De</label>
+            <label
+              style={{
+                display: "block",
+                fontSize: "11px",
+                color: "var(--gray-400)",
+                marginBottom: "4px",
+                fontWeight: 500,
+              }}
+            >
+              De
+            </label>
             <Input
               type="date"
               value={from}
@@ -155,7 +326,17 @@ export function UsageReportFilters({
           </div>
 
           <div>
-            <label style={labelStyle}>Até</label>
+            <label
+              style={{
+                display: "block",
+                fontSize: "11px",
+                color: "var(--gray-400)",
+                marginBottom: "4px",
+                fontWeight: 500,
+              }}
+            >
+              Até
+            </label>
             <Input
               type="date"
               value={to}
@@ -212,6 +393,68 @@ export function UsageReportFilters({
             )}
           </div>
         </div>
+
+        {/* Tags dos filtros ativos */}
+        {hasFilter && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "14px" }}>
+            {productIds.map((id) => {
+              const p = products.find((x) => x.id === id);
+              return p ? (
+                <span
+                  key={id}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    padding: "3px 8px",
+                    borderRadius: "999px",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    backgroundColor: "rgba(25,55,109,0.08)",
+                    color: "var(--navy-800)",
+                  }}
+                >
+                  {p.name}
+                  <button
+                    type="button"
+                    onClick={() => toggleProduct(id)}
+                    style={{ border: "none", background: "none", cursor: "pointer", padding: 0, display: "flex", color: "inherit" }}
+                  >
+                    <X size={11} />
+                  </button>
+                </span>
+              ) : null;
+            })}
+            {projectIds.map((id) => {
+              const p = projects.find((x) => x.id === id);
+              return p ? (
+                <span
+                  key={id}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    padding: "3px 8px",
+                    borderRadius: "999px",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    backgroundColor: "#e0f2fe",
+                    color: "#0284c7",
+                  }}
+                >
+                  {p.name}
+                  <button
+                    type="button"
+                    onClick={() => toggleProject(id)}
+                    style={{ border: "none", background: "none", cursor: "pointer", padding: 0, display: "flex", color: "inherit" }}
+                  >
+                    <X size={11} />
+                  </button>
+                </span>
+              ) : null;
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

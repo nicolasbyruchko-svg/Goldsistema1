@@ -31,9 +31,9 @@ export type SpendingReport = {
 };
 
 export type UsageReportFilters = {
-  productId?: string;
+  productIds?: string[];
   size?: string;
-  projectId?: string;
+  projectIds?: string[];
   from?: Date;
   to?: Date;
 };
@@ -55,9 +55,9 @@ export type UsageReportRow = {
 export type UsageReport = {
   generatedAt: Date;
   filters: {
-    productId?: string;
+    productIds?: string[];
     size?: string;
-    projectId?: string;
+    projectIds?: string[];
     from?: Date;
     to?: Date;
   };
@@ -85,10 +85,14 @@ export async function getUsageReport(filters?: UsageReportFilters): Promise<Usag
   const now = new Date();
 
   const whereItems: Record<string, unknown> = {};
-  if (filters?.productId) whereItems.productId = filters.productId;
+  if (filters?.productIds && filters.productIds.length > 0) {
+    whereItems.productId = { in: filters.productIds };
+  }
 
   const whereDelivery: Record<string, unknown> = { status: { not: "CANCELLED" } };
-  if (filters?.projectId) whereDelivery.projectId = filters.projectId;
+  if (filters?.projectIds && filters.projectIds.length > 0) {
+    whereDelivery.projectId = { in: filters.projectIds };
+  }
   if (filters?.from || filters?.to) {
     whereDelivery.deliveredAt = {
       ...(filters.from && { gte: filters.from }),
@@ -171,9 +175,9 @@ export async function getUsageReport(filters?: UsageReportFilters): Promise<Usag
   return {
     generatedAt: now,
     filters: {
-      productId: filters?.productId,
+      productIds: filters?.productIds,
       size: filters?.size,
-      projectId: filters?.projectId,
+      projectIds: filters?.projectIds,
       from: filters?.from,
       to: filters?.to,
     },
