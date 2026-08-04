@@ -54,7 +54,7 @@ export default async function DashboardPage() {
       prisma.worker.count({ where: { active: true } }),
       prisma.project.count({ where: { active: true } }),
       prisma.delivery.count(),
-      prisma.product.findMany({ orderBy: { name: "asc" } }),
+      prisma.product.findMany({ where: { archived: false }, orderBy: { name: "asc" } }),
       prisma.delivery.findMany({
         take: 5,
         orderBy: { deliveredAt: "desc" },

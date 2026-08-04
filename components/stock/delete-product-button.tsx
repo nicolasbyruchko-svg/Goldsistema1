@@ -85,7 +85,8 @@ export function DeleteProductButton({ product }: DeleteProductButtonProps) {
           >
             <AlertTriangle size={16} style={{ color: "#d97706", flexShrink: 0, marginTop: "1px" }} strokeWidth={2.5} />
             <p style={{ fontSize: "13px", color: "#92400e", margin: 0, lineHeight: 1.5 }}>
-              Esta ação é <strong>permanente e irreversível</strong>. O produto será removido do catálogo e do estoque.
+              O produto será <strong>removido do catálogo e do estoque</strong>. Os registros anteriores em
+              fichas de EPI, entregas, compras e devoluções serão <strong>preservados</strong>.
             </p>
           </div>
 

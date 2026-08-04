@@ -13,6 +13,7 @@ function serializeProduct<T extends { unitCost: unknown }>(p: T): Omit<T, "unitC
 
 export async function getProducts(): Promise<SerializableProduct[]> {
   const products = await prisma.product.findMany({
+    where: { archived: false },
     orderBy: { name: "asc" },
   });
   return products.map(serializeProduct);
@@ -91,19 +92,16 @@ export async function updateProduct(id: string, rawData: ProductFormValues) {
 
 export async function deleteProduct(id: string) {
   try {
-    await prisma.product.delete({ where: { id } });
+    // Exclusão lógica: o produto sai do catálogo/estoque, mas os lançamentos
+    // antigos (fichas de EPI, entregas, compras, devoluções) são preservados.
+    await prisma.product.update({
+      where: { id },
+      data: { archived: true },
+    });
     revalidatePath("/stock");
     revalidatePath("/dashboard");
     return { success: true as const };
-  } catch (err: unknown) {
-    const code = (err as { code?: unknown })?.code;
-    if (code === "P2003") {
-      return {
-        success: false as const,
-        error:
-          "Este produto possui entregas, compras ou devoluções vinculadas e não pode ser excluído. Zere o estoque para retirá-lo do catálogo.",
-      };
-    }
+  } catch {
     return { success: false as const, error: "Erro ao excluir produto" };
   }
 }
