@@ -25,8 +25,8 @@ const CONDITION_CONFIG: Record<string, { label: string; bg: string; color: strin
 };
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
-  PENDING: { label: "Aguardando triagem", bg: "#fef9c3", color: "#92400e" },
-  APPROVED: { label: "Aprovado", bg: "#dcfce7", color: "#15803d" },
+  PENDING: { label: "Higienização", bg: "#fef9c3", color: "#92400e" },
+  APPROVED: { label: "Ok", bg: "#dcfce7", color: "#15803d" },
 };
 
 function ConditionBadge({ condition }: { condition: string }) {
@@ -53,6 +53,7 @@ interface DevolutionItem {
   id: string;
   quantity: number;
   condition: string;
+  approved: boolean | null;
   product: { name: string };
 }
 
@@ -89,11 +90,11 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
         aVal = a.project?.name ?? "";
         bVal = b.project?.name ?? "";
       } else if (sortConfig.key === "goodQty") {
-        aVal = a.items.filter((i) => i.condition === "GOOD").reduce((s, i) => s + i.quantity, 0);
-        bVal = b.items.filter((i) => i.condition === "GOOD").reduce((s, i) => s + i.quantity, 0);
+        aVal = a.items.filter((i) => i.approved === true).reduce((s, i) => s + i.quantity, 0);
+        bVal = b.items.filter((i) => i.approved === true).reduce((s, i) => s + i.quantity, 0);
       } else if (sortConfig.key === "badQty") {
-        aVal = a.items.filter((i) => i.condition !== "GOOD").reduce((s, i) => s + i.quantity, 0);
-        bVal = b.items.filter((i) => i.condition !== "GOOD").reduce((s, i) => s + i.quantity, 0);
+        aVal = a.items.filter((i) => i.approved === false).reduce((s, i) => s + i.quantity, 0);
+        bVal = b.items.filter((i) => i.approved === false).reduce((s, i) => s + i.quantity, 0);
       } else if (sortConfig.key === "status") {
         aVal = a.status;
         bVal = b.status;
@@ -157,15 +158,15 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
               <th style={thStyle("reason")} onClick={() => handleSort("reason")}>Motivo{renderSortIcon("reason")}</th>
               <th style={thStyle("status")} onClick={() => handleSort("status")}>Status{renderSortIcon("status")}</th>
               <th style={{ ...thStyle("items"), cursor: "default" }}>Itens</th>
-              <th style={thStyle("goodQty")} onClick={() => handleSort("goodQty")}>Retorno ao estoque{renderSortIcon("goodQty")}</th>
-              <th style={thStyle("badQty")} onClick={() => handleSort("badQty")}>Descartados{renderSortIcon("badQty")}</th>
+              <th style={thStyle("goodQty")} onClick={() => handleSort("goodQty")}>Aprovadas{renderSortIcon("goodQty")}</th>
+              <th style={thStyle("badQty")} onClick={() => handleSort("badQty")}>Reprovadas{renderSortIcon("badQty")}</th>
               <th style={{ ...thStyle("actions"), cursor: "default" }}>Ações</th>
             </tr>
           </thead>
           <tbody>
             {sortedDevolutions.map((devolution, idx) => {
-              const goodQty = devolution.items.filter((i) => i.condition === "GOOD").reduce((s, i) => s + i.quantity, 0);
-              const badQty = devolution.items.filter((i) => i.condition !== "GOOD").reduce((s, i) => s + i.quantity, 0);
+              const approvedQty = devolution.items.filter((i) => i.approved === true).reduce((s, i) => s + i.quantity, 0);
+              const reprovedQty = devolution.items.filter((i) => i.approved === false).reduce((s, i) => s + i.quantity, 0);
               const isPending = devolution.status === "PENDING";
               return (
                 <tr
@@ -214,16 +215,16 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
                       ))}
                     </div>
                   </td>
-                  <td style={{ padding: "14px 24px" }}>
-                    <span style={{ fontSize: "15px", fontWeight: 700, color: goodQty > 0 ? "#15803d" : "var(--gray-300)" }}>
-                      {isPending ? "—" : `+${goodQty}`}
-                    </span>
-                  </td>
-                  <td style={{ padding: "14px 24px" }}>
-                    <span style={{ fontSize: "15px", fontWeight: 700, color: badQty > 0 ? "#dc2626" : "var(--gray-300)" }}>
-                      {isPending ? "—" : badQty}
-                    </span>
-                  </td>
+<td style={{ padding: "14px 24px" }}>
+                  <span style={{ fontSize: "15px", fontWeight: 700, color: approvedQty > 0 ? "#15803d" : "var(--gray-300)" }}>
+                    {isPending ? "—" : approvedQty}
+                  </span>
+                </td>
+                <td style={{ padding: "14px 24px" }}>
+                  <span style={{ fontSize: "15px", fontWeight: 700, color: reprovedQty > 0 ? "#dc2626" : "var(--gray-300)" }}>
+                    {isPending ? "—" : reprovedQty}
+                  </span>
+                </td>
                   <td style={{ padding: "14px 24px" }}>
                     {isPending && (
                       <button

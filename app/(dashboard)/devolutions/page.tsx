@@ -21,24 +21,24 @@ export default async function DevolutionsPage() {
   const pendingCount = devolutions.filter((d) => d.status === "PENDING").length;
   const approvedCount = devolutions.filter((d) => d.status === "APPROVED").length;
 
-  const returnedToStock = devolutions
+  const approvedQty = devolutions
     .filter((d) => d.status === "APPROVED")
     .reduce(
       (sum, d) =>
         sum +
         d.items
-          .filter((i) => i.condition === "GOOD")
+          .filter((i) => i.approved === true)
           .reduce((s, i) => s + i.quantity, 0),
       0
     );
 
-  const discarded = devolutions
+  const reprovedQty = devolutions
     .filter((d) => d.status === "APPROVED")
     .reduce(
       (sum, d) =>
         sum +
         d.items
-          .filter((i) => i.condition !== "GOOD")
+          .filter((i) => i.approved === false)
           .reduce((s, i) => s + i.quantity, 0),
       0
     );
@@ -66,10 +66,10 @@ export default async function DevolutionsPage() {
       {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px", marginBottom: "28px" }}>
         {[
-          { label: "Pendentes de triagem", value: pendingCount, color: "#92400e", bg: "#fef9c3", icon: Clock },
-          { label: "Aprovadas", value: approvedCount, color: "#0d9488", bg: "#ccfbf1" },
-          { label: "Itens reincorporados ao estoque", value: returnedToStock, color: "#15803d", bg: "#dcfce7", icon: PackageCheck },
-          { label: "Itens descartados (rasgados/não utilizáveis)", value: discarded, color: "#dc2626", bg: "#fee2e2", icon: PackageX },
+          { label: "Pendentes de Higienização", value: pendingCount, color: "#92400e", bg: "#fef9c3", icon: Clock },
+          { label: "Validadas (Ok)", value: approvedCount, color: "#0d9488", bg: "#ccfbf1" },
+          { label: "Peças aprovadas", value: approvedQty, color: "#15803d", bg: "#dcfce7", icon: PackageCheck },
+          { label: "Peças reprovadas", value: reprovedQty, color: "#dc2626", bg: "#fee2e2", icon: PackageX },
         ].map((s) => (
           <div key={s.label} style={{ backgroundColor: "#fff", borderRadius: "12px", padding: "20px 24px", boxShadow: "0 1px 3px rgba(0,0,0,0.07)", border: "1px solid var(--gray-200)" }}>
             <span style={{ display: "block", fontSize: "13px", color: "var(--gray-500)", fontWeight: 500 }}>{s.label}</span>

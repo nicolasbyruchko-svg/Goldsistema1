@@ -91,7 +91,13 @@ export async function approveDevolution(
 
     await prisma.$transaction(async (tx) => {
       for (const item of devolution.items) {
-        const isApproved = approvalMap.get(item.id);
+        const isApproved = approvalMap.get(item.id) ?? false;
+
+        await tx.devolutionItem.update({
+          where: { id: item.id },
+          data: { approved: isApproved },
+        });
+
         if (isApproved && item.condition === "GOOD") {
           await tx.product.update({
             where: { id: item.productId },
