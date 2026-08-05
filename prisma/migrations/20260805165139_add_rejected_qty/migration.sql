@@ -1,0 +1,1 @@
+ALTER TABLE "DevolutionItem" ADD COLUMN "rejectedQty" INTEGER NOT NULL DEFAULT 0;

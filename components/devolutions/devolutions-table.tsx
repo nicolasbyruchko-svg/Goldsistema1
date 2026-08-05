@@ -57,6 +57,7 @@ interface DevolutionItem {
   quantity: number;
   condition: string;
   approvedQty: number | null;
+  rejectedQty: number;
   repairedQty: number;
   product: { name: string };
 }
@@ -99,8 +100,11 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
         aVal = a.items.reduce((s, i) => s + (i.approvedQty ?? 0), 0);
         bVal = b.items.reduce((s, i) => s + (i.approvedQty ?? 0), 0);
       } else if (sortConfig.key === "badQty") {
-        aVal = a.items.reduce((s, i) => s + (i.quantity - (i.approvedQty ?? 0)), 0);
-        bVal = b.items.reduce((s, i) => s + (i.quantity - (i.approvedQty ?? 0)), 0);
+        aVal = a.items.reduce((s, i) => s + (i.rejectedQty ?? 0), 0);
+        bVal = b.items.reduce((s, i) => s + (i.rejectedQty ?? 0), 0);
+      } else if (sortConfig.key === "pendingQty") {
+        aVal = a.items.reduce((s, i) => s + (i.quantity - (i.approvedQty ?? 0) - (i.rejectedQty ?? 0)), 0);
+        bVal = b.items.reduce((s, i) => s + (i.quantity - (i.approvedQty ?? 0) - (i.rejectedQty ?? 0)), 0);
       } else if (sortConfig.key === "status") {
         aVal = a.status;
         bVal = b.status;
@@ -116,7 +120,7 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
       let comparison = 0;
       if (sortConfig.key === "devolvedAt") {
         comparison = new Date(aVal as string).getTime() - new Date(bVal as string).getTime();
-      } else if (sortConfig.key === "goodQty" || sortConfig.key === "badQty") {
+      } else if (sortConfig.key === "goodQty" || sortConfig.key === "badQty" || sortConfig.key === "pendingQty") {
         comparison = Number(aVal) - Number(bVal);
       } else {
         comparison = String(aVal).localeCompare(String(bVal), "pt-BR", { sensitivity: "base" });
@@ -165,6 +169,7 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
               <th style={thStyle("status")} onClick={() => handleSort("status")}>Status{renderSortIcon("status")}</th>
               <th style={{ ...thStyle("items"), cursor: "default" }}>Itens</th>
               <th style={thStyle("goodQty")} onClick={() => handleSort("goodQty")}>Aprovadas{renderSortIcon("goodQty")}</th>
+              <th style={thStyle("pendingQty")} onClick={() => handleSort("pendingQty")}>Pendentes{renderSortIcon("pendingQty")}</th>
               <th style={thStyle("badQty")} onClick={() => handleSort("badQty")}>Reprovadas{renderSortIcon("badQty")}</th>
               <th style={{ ...thStyle("actions"), cursor: "default" }}>Ações</th>
             </tr>
@@ -172,7 +177,8 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
           <tbody>
             {sortedDevolutions.map((devolution, idx) => {
               const approvedQty = devolution.items.reduce((s, i) => s + (i.approvedQty ?? 0), 0);
-              const reprovedQty = devolution.items.reduce((s, i) => s + (i.quantity - (i.approvedQty ?? 0)), 0);
+              const rejectedQty = devolution.items.reduce((s, i) => s + (i.rejectedQty ?? 0), 0);
+              const pendingQty = devolution.items.reduce((s, i) => s + (i.quantity - (i.approvedQty ?? 0) - (i.rejectedQty ?? 0)), 0);
               const isPending = devolution.status === "PENDING";
               const isPartial = devolution.status === "PARTIAL";
               const canApprove = isPending || isPartial;
@@ -229,8 +235,13 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
                   </span>
                 </td>
                 <td style={{ padding: "14px 24px" }}>
-                  <span style={{ fontSize: "15px", fontWeight: 700, color: reprovedQty > 0 ? "#dc2626" : "var(--gray-300)" }}>
-                    {isPending && !isPartial ? "—" : reprovedQty}
+                  <span style={{ fontSize: "15px", fontWeight: 700, color: pendingQty > 0 ? "#92400e" : "var(--gray-300)" }}>
+                    {isPending && !isPartial ? "—" : pendingQty}
+                  </span>
+                </td>
+                <td style={{ padding: "14px 24px" }}>
+                  <span style={{ fontSize: "15px", fontWeight: 700, color: rejectedQty > 0 ? "#dc2626" : "var(--gray-300)" }}>
+                    {isPending && !isPartial ? "—" : rejectedQty}
                   </span>
                 </td>
 <td style={{ padding: "14px 24px", maxWidth: "260px" }}>

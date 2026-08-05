@@ -138,6 +138,7 @@ model DevolutionItem {
   quantity        Int
   condition       String      @default("GOOD")
   approvedQty     Int?
+  rejectedQty     Int         @default(0)
   repairedQty     Int         @default(0)
   repairStartedAt DateTime?
   createdAt       DateTime    @default(now())

@@ -71,7 +71,7 @@ export async function createDevolution(rawData: DevolutionFormValues) {
 
 export async function approveDevolution(
   devolutionId: string,
-  itemApprovals: Array<{ itemId: string; approvedQty: number }>,
+  itemApprovals: Array<{ itemId: string; approvedQty: number; rejectedQty: number }>,
   notes?: string
 ) {
   try {
@@ -88,29 +88,39 @@ export async function approveDevolution(
       return { success: false as const, error: "Devolução já foi aprovada" };
     }
 
-    const approvalMap = new Map(itemApprovals.map((a) => [a.itemId, a.approvedQty]));
+    const approvalMap = new Map(itemApprovals.map((a) => [a.itemId, a]));
 
     await prisma.$transaction(async (tx) => {
       for (const item of devolution.items) {
-        const requestedQty = Math.min(
-          Math.max(approvalMap.get(item.id) ?? 0, 0),
-          item.quantity
-        );
+        const data = approvalMap.get(item.id);
+        const requestedApproved = data?.approvedQty ?? 0;
+        const requestedRejected = data?.rejectedQty ?? 0;
 
         if (item.condition === "GOOD") {
           const previousApproved = item.approvedQty ?? 0;
-          const newApprovedQty = Math.max(requestedQty, previousApproved);
-          const increment = newApprovedQty - previousApproved;
+          const previousRejected = item.rejectedQty ?? 0;
+          const available = item.quantity - previousApproved - previousRejected;
+
+          const newRejectedQty = Math.min(
+            Math.max(requestedRejected, previousRejected),
+            item.quantity - previousApproved
+          );
+          const maxApproved = item.quantity - previousApproved - newRejectedQty;
+          const newAdditionalApproved = Math.min(
+            Math.max(requestedApproved, 0),
+            maxApproved
+          );
+          const newApprovedQty = previousApproved + newAdditionalApproved;
 
           await tx.devolutionItem.update({
             where: { id: item.id },
-            data: { approvedQty: newApprovedQty },
+            data: { approvedQty: newApprovedQty, rejectedQty: newRejectedQty },
           });
 
-          if (increment > 0) {
+          if (newAdditionalApproved > 0) {
             await tx.product.update({
               where: { id: item.productId },
-              data: { stockQuantity: { increment } },
+              data: { stockQuantity: { increment: newAdditionalApproved } },
             });
           }
         } else if (item.condition === "SEWING") {
@@ -118,21 +128,23 @@ export async function approveDevolution(
             where: { id: item.id },
             data: {
               approvedQty: 0,
+              rejectedQty: 0,
               repairStartedAt: item.repairStartedAt ?? new Date(),
             },
           });
         } else {
           await tx.devolutionItem.update({
             where: { id: item.id },
-            data: { approvedQty: 0 },
+            data: { approvedQty: 0, rejectedQty: item.quantity },
           });
         }
       }
 
       const allItemsFullyProcessed = devolution.items.every((item) => {
         if (item.condition === "GOOD") {
-          const requested = approvalMap.get(item.id) ?? 0;
-          return requested >= item.quantity;
+          const data = approvalMap.get(item.id);
+          const totalDecided = (data?.approvedQty ?? 0) + (data?.rejectedQty ?? 0);
+          return totalDecided >= item.quantity;
         }
         return true;
       });

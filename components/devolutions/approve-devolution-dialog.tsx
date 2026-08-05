@@ -19,6 +19,7 @@ interface DevolutionItem {
   quantity: number;
   condition: string;
   approvedQty: number | null;
+  rejectedQty: number;
   product: { name: string };
 }
 
@@ -45,49 +46,95 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
 
   const [approvals, setApprovals] = useState<Record<string, number>>(() =>
     Object.fromEntries(
-      approvableItems.map((item) => [item.id, item.approvedQty ?? item.quantity])
+      approvableItems.map((item) => [item.id, item.approvedQty ?? 0])
+    )
+  );
+  const [rejections, setRejections] = useState<Record<string, number>>(() =>
+    Object.fromEntries(
+      approvableItems.map((item) => [item.id, item.rejectedQty ?? 0])
     )
   );
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
+  const getItemState = (item: DevolutionItem) => {
+    const approved = approvals[item.id] ?? 0;
+    const rejected = rejections[item.id] ?? 0;
+    const maxForApproved = item.quantity - rejected;
+    const maxForRejected = item.quantity - approved;
+    const clampedApproved = Math.min(approved, maxForApproved);
+    const clampedRejected = Math.min(rejected, maxForRejected);
+    const pending = item.quantity - clampedApproved - clampedRejected;
+    return { approved: clampedApproved, rejected: clampedRejected, pending };
+  };
+
   const setApprovedQty = (itemId: string, qty: number) => {
     const item = approvableItems.find((i) => i.id === itemId);
     if (!item) return;
+    const prevRejected = rejections[itemId] ?? 0;
     const min = item.approvedQty ?? 0;
-    const clamped = Math.min(Math.max(Math.round(qty) || 0, min), item.quantity);
+    const maxAllowed = item.quantity - prevRejected;
+    const clamped = Math.min(Math.max(Math.round(qty) || 0, min), maxAllowed);
     setApprovals((prev) => ({ ...prev, [itemId]: clamped }));
   };
 
+  const setRejectedQty = (itemId: string, qty: number) => {
+    const item = approvableItems.find((i) => i.id === itemId);
+    if (!item) return;
+    const prevApproved = approvals[itemId] ?? 0;
+    const maxAllowed = item.quantity - prevApproved;
+    const clamped = Math.min(Math.max(Math.round(qty) || 0, 0), maxAllowed);
+    setRejections((prev) => ({ ...prev, [itemId]: clamped }));
+  };
+
   const handleApproveAll = () => {
-    const newVals: Record<string, number> = {};
+    const newApprovals: Record<string, number> = {};
+    const newRejections: Record<string, number> = {};
     for (const item of approvableItems) {
-      newVals[item.id] = item.quantity;
+      newApprovals[item.id] = item.quantity;
+      newRejections[item.id] = 0;
     }
-    setApprovals(newVals);
+    setApprovals(newApprovals);
+    setRejections(newRejections);
   };
 
   const handleRejectAll = () => {
-    const newVals: Record<string, number> = {};
+    const newApprovals: Record<string, number> = {};
+    const newRejections: Record<string, number> = {};
     for (const item of approvableItems) {
-      newVals[item.id] = item.approvedQty ?? 0;
+      newApprovals[item.id] = item.approvedQty ?? 0;
+      newRejections[item.id] = item.quantity - (item.approvedQty ?? 0);
     }
-    setApprovals(newVals);
+    setApprovals(newApprovals);
+    setRejections(newRejections);
+  };
+
+  const handlePendingAll = () => {
+    const newApprovals: Record<string, number> = {};
+    const newRejections: Record<string, number> = {};
+    for (const item of approvableItems) {
+      newApprovals[item.id] = item.approvedQty ?? 0;
+      newRejections[item.id] = item.rejectedQty ?? 0;
+    }
+    setApprovals(newApprovals);
+    setRejections(newRejections);
   };
 
   const summary = useMemo(() => {
     let stockQty = 0;
     let pendingQty = 0;
+    let rejectedQty = 0;
     let discardQty = 0;
     let repairQty = 0;
     let newApprovals = 0;
     for (const item of approvableItems) {
-      const approvedQty = approvals[item.id] ?? 0;
+      const state = getItemState(item);
       const previousApproved = item.approvedQty ?? 0;
-      stockQty += approvedQty;
-      newApprovals += Math.max(0, approvedQty - previousApproved);
-      pendingQty += item.quantity - approvedQty;
+      stockQty += state.approved;
+      newApprovals += Math.max(0, state.approved - previousApproved);
+      pendingQty += state.pending;
+      rejectedQty += state.rejected;
     }
     for (const item of autoDiscardItems) {
       discardQty += item.quantity;
@@ -95,17 +142,20 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
     for (const item of sewingItems) {
       repairQty += item.quantity;
     }
-    return { stockQty, pendingQty, discardQty, repairQty, newApprovals };
-  }, [approvableItems, autoDiscardItems, sewingItems, approvals]);
+    return { stockQty, pendingQty, rejectedQty, discardQty, repairQty, newApprovals };
+  }, [approvableItems, autoDiscardItems, sewingItems, approvals, rejections]);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setServerError(null);
 
-    const itemApprovals = devolution.items.map((item) => ({
-      itemId: item.id,
-      approvedQty: item.condition === "GOOD" ? (approvals[item.id] ?? 0) : 0,
-    }));
+    const itemApprovals = devolution.items.map((item) => {
+      if (item.condition === "GOOD") {
+        const state = getItemState(item);
+        return { itemId: item.id, approvedQty: state.approved, rejectedQty: state.rejected };
+      }
+      return { itemId: item.id, approvedQty: 0, rejectedQty: 0 };
+    });
 
     const result = await approveDevolution(
       devolution.id,
@@ -122,9 +172,13 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
     setIsSubmitting(false);
   };
 
-  const allApproved = approvableItems.every((item) => (approvals[item.id] ?? 0) === item.quantity);
-  const allRejected = approvableItems.length > 0 && approvableItems.every((item) => (approvals[item.id] ?? 0) === (item.approvedQty ?? 0));
-  const hasPreviousApprovals = approvableItems.some((item) => (item.approvedQty ?? 0) > 0);
+  const allDecided = approvableItems.every((item) => {
+    const state = getItemState(item);
+    return state.approved + state.rejected === item.quantity;
+  });
+  const hasPreviousDecisions = approvableItems.some(
+    (item) => (item.approvedQty ?? 0) > 0 || (item.rejectedQty ?? 0) > 0
+  );
 
   return (
     <Dialog
@@ -132,16 +186,16 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
       onClose={onClose}
       title="Aprovar Devolução"
       description={
-        hasPreviousApprovals
-          ? `Aprovação parcial de ${devolution.worker.name}. Itens já aprovados anteriormente estão marcados. Itens rasgados ou não utilizáveis são descartados automaticamente.`
+        hasPreviousDecisions
+          ? `Aprovação parcial de ${devolution.worker.name}. Itens já processados estão bloqueados. Itens rasgados ou não utilizáveis são descartados automaticamente.`
           : `Triagem dos itens devolvidos por ${devolution.worker.name}. Itens rasgados ou não utilizáveis são descartados automaticamente.`
       }
-      maxWidth="720px"
+      maxWidth="780px"
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
         {/* Quick actions */}
         {approvableItems.length > 0 && (
-          <div style={{ display: "flex", gap: "8px" }}>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
             <button
               type="button"
               onClick={handleApproveAll}
@@ -168,6 +222,30 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
             </button>
             <button
               type="button"
+              onClick={handlePendingAll}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px",
+                padding: "6px 12px",
+                fontSize: "12px",
+                fontWeight: 600,
+                fontFamily: "inherit",
+                borderRadius: "6px",
+                border: "1px solid #fde68a",
+                backgroundColor: "#fefce8",
+                color: "#92400e",
+                cursor: "pointer",
+                transition: "background-color 0.15s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#fef9c3"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#fefce8"; }}
+            >
+              <Clock size={13} />
+              Manter pendente
+            </button>
+            <button
+              type="button"
               onClick={handleRejectAll}
               style={{
                 display: "inline-flex",
@@ -188,7 +266,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
               onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#fef2f2"; }}
             >
               <XCircle size={13} />
-              Manter pendente
+              Reprovar todos
             </button>
           </div>
         )}
@@ -197,16 +275,14 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
         {approvableItems.length > 0 && (
           <div>
             <span style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "var(--gray-700)", marginBottom: "8px" }}>
-              Itens em bom estado — selecione quantas peças aprovadas
+              Itens em bom estado — distribua as peças entre aprovado, pendente e reprovado
             </span>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               {approvableItems.map((item) => {
-                const approvedQty = approvals[item.id] ?? 0;
+                const state = getItemState(item);
                 const previousApproved = item.approvedQty ?? 0;
-                const reprovedQty = item.quantity - approvedQty;
-                const fullyApproved = approvedQty === item.quantity;
-                const fullyRejected = approvedQty === previousApproved;
-                const hasPartial = previousApproved > 0 && approvedQty < item.quantity;
+                const previousRejected = item.rejectedQty ?? 0;
+                const isLocked = previousApproved > 0 || previousRejected > 0;
 
                 return (
                   <div
@@ -240,7 +316,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
                         >
                           {CONDITION_CONFIG[item.condition].label}
                         </span>
-                        {hasPartial && (
+                        {isLocked && (
                           <span
                             style={{
                               display: "inline-block",
@@ -249,52 +325,46 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
                               borderRadius: "999px",
                               fontSize: "11px",
                               fontWeight: 600,
-                              backgroundColor: "#fef3c7",
-                              color: "#92400e",
+                              backgroundColor: "#e0e7ff",
+                              color: "#4338ca",
                             }}
                           >
-                            {previousApproved} já aprovada{previousApproved > 1 ? "s" : ""}
+                            Parcialmente processado
                           </span>
                         )}
                       </div>
-                      {fullyRejected && (
-                        <span style={{ fontSize: "12px", fontWeight: 600, color: "#dc2626", display: "flex", alignItems: "center", gap: "4px" }}>
-                          <XCircle size={13} />
-                          Sem novas aprovações
-                        </span>
-                      )}
-                      {fullyApproved && (
+                      {state.pending === 0 && (
                         <span style={{ fontSize: "12px", fontWeight: 600, color: "#15803d", display: "flex", alignItems: "center", gap: "4px" }}>
                           <CheckCircle2 size={13} />
-                          Tudo aprovado
+                          Totalmente decidido
                         </span>
                       )}
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                      {/* Aprovar qty */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+                      {/* Aprovar */}
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: "10px",
+                          gap: "8px",
                           padding: "8px 10px",
                           backgroundColor: "#f0fdf4",
                           borderRadius: "8px",
                           border: "1px solid #bbf7d0",
                         }}
                       >
-                        <PackageCheck size={16} style={{ color: "#15803d", flexShrink: 0 }} />
-                        <span style={{ fontSize: "13px", fontWeight: 600, color: "#15803d", whiteSpace: "nowrap" }}>Aprovar</span>
+                        <PackageCheck size={15} style={{ color: "#15803d", flexShrink: 0 }} />
+                        <span style={{ fontSize: "12px", fontWeight: 600, color: "#15803d", whiteSpace: "nowrap" }}>Aprovar</span>
                         <input
                           type="number"
                           min={previousApproved}
-                          max={item.quantity}
-                          value={approvedQty}
+                          max={item.quantity - (rejections[item.id] ?? 0)}
+                          value={state.approved}
                           onChange={(e) => setApprovedQty(item.id, Number(e.target.value))}
                           style={{
-                            width: "60px",
-                            padding: "5px 8px",
+                            width: "50px",
+                            padding: "5px 6px",
                             fontSize: "14px",
                             fontWeight: 700,
                             fontFamily: "inherit",
@@ -308,24 +378,24 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
                         />
                       </div>
 
-                      {/* Pendente qty */}
+                      {/* Pendente */}
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: "10px",
+                          gap: "8px",
                           padding: "8px 10px",
                           borderRadius: "8px",
                           backgroundColor: "#fefce8",
                           border: "1px solid #fde68a",
                         }}
                       >
-                        <Clock size={16} style={{ color: "#92400e", flexShrink: 0 }} />
-                        <span style={{ fontSize: "13px", fontWeight: 600, color: "#92400e", whiteSpace: "nowrap" }}>Pendente</span>
+                        <Clock size={15} style={{ color: "#92400e", flexShrink: 0 }} />
+                        <span style={{ fontSize: "12px", fontWeight: 600, color: "#92400e", whiteSpace: "nowrap" }}>Pendente</span>
                         <span
                           style={{
-                            width: "60px",
-                            padding: "5px 8px",
+                            width: "50px",
+                            padding: "5px 6px",
                             fontSize: "14px",
                             fontWeight: 700,
                             fontFamily: "inherit",
@@ -336,8 +406,44 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
                             color: "#92400e",
                           }}
                         >
-                          {reprovedQty}
+                          {state.pending}
                         </span>
+                      </div>
+
+                      {/* Reprovar */}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          padding: "8px 10px",
+                          borderRadius: "8px",
+                          backgroundColor: "#fef2f2",
+                          border: "1px solid #fecaca",
+                        }}
+                      >
+                        <PackageX size={15} style={{ color: "#dc2626", flexShrink: 0 }} />
+                        <span style={{ fontSize: "12px", fontWeight: 600, color: "#dc2626", whiteSpace: "nowrap" }}>Reprovar</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={item.quantity - (approvals[item.id] ?? 0)}
+                          value={state.rejected}
+                          onChange={(e) => setRejectedQty(item.id, Number(e.target.value))}
+                          style={{
+                            width: "50px",
+                            padding: "5px 6px",
+                            fontSize: "14px",
+                            fontWeight: 700,
+                            fontFamily: "inherit",
+                            textAlign: "center",
+                            borderRadius: "6px",
+                            border: "1px solid #fca5a5",
+                            backgroundColor: "#fff",
+                            color: "#dc2626",
+                            outline: "none",
+                          }}
+                        />
                       </div>
                     </div>
                   </div>
@@ -454,6 +560,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
             gridTemplateColumns: (() => {
               let cols = 1;
               if (summary.pendingQty > 0) cols++;
+              if (summary.rejectedQty > 0) cols++;
               if (summary.discardQty > 0) cols++;
               if (hasSewing) cols++;
               return `repeat(${cols}, 1fr)`;
@@ -493,6 +600,21 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
               </div>
             </div>
           )}
+          {summary.rejectedQty > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ width: "32px", height: "32px", borderRadius: "8px", backgroundColor: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <PackageX size={16} style={{ color: "#dc2626" }} />
+              </div>
+              <div>
+                <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  Reprovados
+                </span>
+                <span style={{ display: "block", fontSize: "20px", fontWeight: 800, color: "#dc2626" }}>
+                  {summary.rejectedQty}
+                </span>
+              </div>
+            </div>
+          )}
           {hasSewing && (
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <div style={{ width: "32px", height: "32px", borderRadius: "8px", backgroundColor: "#e0e7ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -510,14 +632,14 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
           )}
           {summary.discardQty > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <div style={{ width: "32px", height: "32px", borderRadius: "8px", backgroundColor: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <PackageX size={16} style={{ color: "#dc2626" }} />
+              <div style={{ width: "32px", height: "32px", borderRadius: "8px", backgroundColor: "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <AlertTriangle size={16} style={{ color: "#92400e" }} />
               </div>
               <div>
                 <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                  Descartados
+                  Descartados auto
                 </span>
-                <span style={{ display: "block", fontSize: "20px", fontWeight: 800, color: "#dc2626" }}>
+                <span style={{ display: "block", fontSize: "20px", fontWeight: 800, color: "#92400e" }}>
                   {summary.discardQty}
                 </span>
               </div>
@@ -611,7 +733,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
               fontFamily: "inherit",
               borderRadius: "8px",
               border: "none",
-              backgroundColor: allRejected ? "#dc2626" : "#059669",
+              backgroundColor: "#059669",
               color: "#fff",
               cursor: isSubmitting ? "not-allowed" : "pointer",
               opacity: isSubmitting ? 0.6 : 1,
@@ -623,7 +745,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
                 <path d="M21 12a9 9 0 11-6.219-8.56" />
               </svg>
             )}
-            {allRejected ? "Confirmar reprovação" : hasPreviousApprovals && summary.newApprovals > 0 ? "Aprovar selecionadas" : "Confirmar aprovação"}
+            {allDecided ? "Confirmar triagem" : "Salvar parcial"}
           </button>
         </div>
       </div>
