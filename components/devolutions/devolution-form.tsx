@@ -28,7 +28,6 @@ const REASON_LABELS: Record<string, string> = {
 
 const CONDITION_LABELS: Record<string, string> = {
   GOOD: "Bom estado (volta ao estoque)",
-  DAMAGED: "Rasgado / Deteriorado (descarte)",
   UNUSABLE: "Não utilizável (descarte)",
   SEWING: "Costura / reparo",
 };

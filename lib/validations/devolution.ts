@@ -6,7 +6,7 @@ export const devolutionItemSchema = z.object({
     .number({ invalid_type_error: "Informe a quantidade" })
     .int("Deve ser inteiro")
     .min(1, "Mínimo 1"),
-  condition: z.enum(["GOOD", "DAMAGED", "UNUSABLE", "SEWING"], {
+  condition: z.enum(["GOOD", "UNUSABLE", "SEWING"], {
     required_error: "Selecione o estado do item",
   }),
 });
