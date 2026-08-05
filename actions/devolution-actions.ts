@@ -71,7 +71,8 @@ export async function createDevolution(rawData: DevolutionFormValues) {
 
 export async function approveDevolution(
   devolutionId: string,
-  itemApprovals: Array<{ itemId: string; approvedQty: number }>
+  itemApprovals: Array<{ itemId: string; approvedQty: number }>,
+  notes?: string
 ) {
   try {
     const devolution = await prisma.devolution.findUnique({
@@ -111,7 +112,7 @@ export async function approveDevolution(
 
       await tx.devolution.update({
         where: { id: devolutionId },
-        data: { status: "APPROVED" },
+        data: { status: "APPROVED", notes: notes?.trim() ? notes.trim() : null },
       });
     });
 

@@ -61,6 +61,7 @@ interface Devolution {
   id: string;
   reason: string;
   status: string;
+  notes: string | null;
   devolvedAt: Date;
   worker: { name: string; matricula: string };
   project: { name: string } | null;
@@ -225,34 +226,50 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
                     {isPending ? "—" : reprovedQty}
                   </span>
                 </td>
-                  <td style={{ padding: "14px 24px" }}>
-                    {isPending && (
-                      <button
-                        type="button"
-                        onClick={() => setApproveDevolution(devolution)}
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          padding: "7px 14px",
-                          fontSize: "12px",
-                          fontWeight: 600,
-                          fontFamily: "inherit",
-                          borderRadius: "8px",
-                          border: "none",
-                          backgroundColor: "#059669",
-                          color: "#fff",
-                          cursor: "pointer",
-                          transition: "opacity 0.15s",
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.85"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
-                      >
-                        <ClipboardCheck size={13} />
-                        Aprovar
-                      </button>
-                    )}
-                  </td>
+<td style={{ padding: "14px 24px", maxWidth: "260px" }}>
+                  {isPending ? (
+                    <button
+                      type="button"
+                      onClick={() => setApproveDevolution(devolution)}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "7px 14px",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        fontFamily: "inherit",
+                        borderRadius: "8px",
+                        border: "none",
+                        backgroundColor: "#059669",
+                        color: "#fff",
+                        cursor: "pointer",
+                        transition: "opacity 0.15s",
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.85"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
+                    >
+                      <ClipboardCheck size={13} />
+                      Aprovar
+                    </button>
+                  ) : devolution.notes ? (
+                    <div
+                      style={{
+                        padding: "8px 12px",
+                        backgroundColor: "#fffbeb",
+                        border: "1px solid #fde68a",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                        color: "#92400e",
+                        lineHeight: 1.5,
+                        wordBreak: "break-word",
+                      }}
+                      title={devolution.notes}
+                    >
+                      {devolution.notes}
+                    </div>
+                  ) : null}
+                </td>
                 </tr>
               );
             })}

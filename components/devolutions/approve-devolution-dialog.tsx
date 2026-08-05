@@ -90,7 +90,11 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
       approvedQty: approvals[item.id] ?? 0,
     }));
 
-    const result = await approveDevolution(devolution.id, itemApprovals);
+    const result = await approveDevolution(
+      devolution.id,
+      itemApprovals,
+      notes
+    );
 
     if (result.success) {
       router.refresh();
