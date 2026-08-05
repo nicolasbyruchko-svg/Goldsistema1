@@ -34,15 +34,20 @@ interface ApproveDevolutionDialogProps {
 
 export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDevolutionDialogProps) {
   const router = useRouter();
+
+  const approvableItems = devolution.items.filter((i) => i.condition === "GOOD");
+  const autoDiscardItems = devolution.items.filter((i) => i.condition !== "GOOD");
+  const hasAutoDiscard = autoDiscardItems.length > 0;
+
   const [approvals, setApprovals] = useState<Record<string, number>>(() =>
-    Object.fromEntries(devolution.items.map((item) => [item.id, item.quantity]))
+    Object.fromEntries(approvableItems.map((item) => [item.id, item.quantity]))
   );
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
   const setApprovedQty = (itemId: string, qty: number) => {
-    const item = devolution.items.find((i) => i.id === itemId);
+    const item = approvableItems.find((i) => i.id === itemId);
     if (!item) return;
     const clamped = Math.min(Math.max(Math.round(qty) || 0, 0), item.quantity);
     setApprovals((prev) => ({ ...prev, [itemId]: clamped }));
@@ -50,7 +55,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
 
   const handleApproveAll = () => {
     const newVals: Record<string, number> = {};
-    for (const item of devolution.items) {
+    for (const item of approvableItems) {
       newVals[item.id] = item.quantity;
     }
     setApprovals(newVals);
@@ -58,7 +63,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
 
   const handleRejectAll = () => {
     const newVals: Record<string, number> = {};
-    for (const item of devolution.items) {
+    for (const item of approvableItems) {
       newVals[item.id] = 0;
     }
     setApprovals(newVals);
@@ -67,19 +72,16 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
   const summary = useMemo(() => {
     let stockQty = 0;
     let discardQty = 0;
-    for (const item of devolution.items) {
+    for (const item of approvableItems) {
       const approvedQty = approvals[item.id] ?? 0;
-      const reprovedQty = item.quantity - approvedQty;
-      if (item.condition === "GOOD") {
-        stockQty += approvedQty;
-      }
-      discardQty += reprovedQty;
-      if (item.condition !== "GOOD") {
-        discardQty += approvedQty;
-      }
+      stockQty += approvedQty;
+      discardQty += item.quantity - approvedQty;
+    }
+    for (const item of autoDiscardItems) {
+      discardQty += item.quantity;
     }
     return { stockQty, discardQty };
-  }, [devolution.items, approvals]);
+  }, [approvableItems, autoDiscardItems, approvals]);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -87,7 +89,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
 
     const itemApprovals = devolution.items.map((item) => ({
       itemId: item.id,
-      approvedQty: approvals[item.id] ?? 0,
+      approvedQty: item.condition === "GOOD" ? (approvals[item.id] ?? 0) : 0,
     }));
 
     const result = await approveDevolution(
@@ -105,199 +107,257 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
     setIsSubmitting(false);
   };
 
-  const allApproved = devolution.items.every((item) => (approvals[item.id] ?? 0) === item.quantity);
-  const allRejected = devolution.items.every((item) => (approvals[item.id] ?? 0) === 0);
+  const allApproved = approvableItems.every((item) => (approvals[item.id] ?? 0) === item.quantity);
+  const allRejected = approvableItems.length > 0 && approvableItems.every((item) => (approvals[item.id] ?? 0) === 0);
 
   return (
     <Dialog
       open={open}
       onClose={onClose}
       title="Aprovar Devolução"
-      description={`Triagem dos itens devolvidos por ${devolution.worker.name}. Selecione quantas peças de cada item são aprovadas e quantas reprovadas.`}
+      description={`Triagem dos itens devolvidos por ${devolution.worker.name}. Itens rasgados ou não utilizáveis são descartados automaticamente.`}
       maxWidth="720px"
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
         {/* Quick actions */}
-        <div style={{ display: "flex", gap: "8px" }}>
-          <button
-            type="button"
-            onClick={handleApproveAll}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "5px",
-              padding: "6px 12px",
-              fontSize: "12px",
-              fontWeight: 600,
-              fontFamily: "inherit",
-              borderRadius: "6px",
-              border: "1px solid #bbf7d0",
-              backgroundColor: "#f0fdf4",
-              color: "#15803d",
-              cursor: "pointer",
-              transition: "background-color 0.15s",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#dcfce7"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#f0fdf4"; }}
-          >
-            <CheckCircle2 size={13} />
-            Aprovar todos
-          </button>
-          <button
-            type="button"
-            onClick={handleRejectAll}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "5px",
-              padding: "6px 12px",
-              fontSize: "12px",
-              fontWeight: 600,
-              fontFamily: "inherit",
-              borderRadius: "6px",
-              border: "1px solid #fecaca",
-              backgroundColor: "#fef2f2",
-              color: "#dc2626",
-              cursor: "pointer",
-              transition: "background-color 0.15s",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#fee2e2"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#fef2f2"; }}
-          >
-            <XCircle size={13} />
-            Reprovar todos
-          </button>
-        </div>
+        {approvableItems.length > 0 && (
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button
+              type="button"
+              onClick={handleApproveAll}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px",
+                padding: "6px 12px",
+                fontSize: "12px",
+                fontWeight: 600,
+                fontFamily: "inherit",
+                borderRadius: "6px",
+                border: "1px solid #bbf7d0",
+                backgroundColor: "#f0fdf4",
+                color: "#15803d",
+                cursor: "pointer",
+                transition: "background-color 0.15s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#dcfce7"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#f0fdf4"; }}
+            >
+              <CheckCircle2 size={13} />
+              Aprovar todos
+            </button>
+            <button
+              type="button"
+              onClick={handleRejectAll}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px",
+                padding: "6px 12px",
+                fontSize: "12px",
+                fontWeight: 600,
+                fontFamily: "inherit",
+                borderRadius: "6px",
+                border: "1px solid #fecaca",
+                backgroundColor: "#fef2f2",
+                color: "#dc2626",
+                cursor: "pointer",
+                transition: "background-color 0.15s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#fee2e2"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#fef2f2"; }}
+            >
+              <XCircle size={13} />
+              Reprovar todos
+            </button>
+          </div>
+        )}
 
-        {/* Items list */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          {devolution.items.map((item) => {
-            const approvedQty = approvals[item.id] ?? 0;
-            const reprovedQty = item.quantity - approvedQty;
-            const style = CONDITION_CONFIG[item.condition] ?? { label: item.condition, bg: "#f3f4f6", color: "#6b7280" };
-            const fullyApproved = approvedQty === item.quantity;
-            const fullyRejected = approvedQty === 0;
+        {/* Approvable items (Bom estado) */}
+        {approvableItems.length > 0 && (
+          <div>
+            <span style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "var(--gray-700)", marginBottom: "8px" }}>
+              Itens em bom estado — selecione quantas peças aprovadas
+            </span>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {approvableItems.map((item) => {
+                const approvedQty = approvals[item.id] ?? 0;
+                const reprovedQty = item.quantity - approvedQty;
+                const fullyApproved = approvedQty === item.quantity;
+                const fullyRejected = approvedQty === 0;
 
-            return (
-              <div
-                key={item.id}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "12px",
-                  padding: "12px 14px",
-                  backgroundColor: "#fafafa",
-                  borderRadius: "10px",
-                  border: "1px solid var(--gray-200)",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
-                  <div>
-                    <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--gray-900)" }}>
-                      {item.quantity}x {item.product.name}
-                    </span>
-                    <span
-                      style={{
-                        display: "inline-block",
-                        marginLeft: "8px",
-                        padding: "2px 8px",
-                        borderRadius: "999px",
-                        fontSize: "11px",
-                        fontWeight: 600,
-                        backgroundColor: style.bg,
-                        color: style.color,
-                      }}
-                    >
-                      {style.label}
-                    </span>
-                  </div>
-                  {fullyRejected && (
-                    <span style={{ fontSize: "12px", fontWeight: 600, color: "#dc2626", display: "flex", alignItems: "center", gap: "4px" }}>
-                      <XCircle size={13} />
-                      Tudo reprovado
-                    </span>
-                  )}
-                  {fullyApproved && item.condition === "GOOD" && (
-                    <span style={{ fontSize: "12px", fontWeight: 600, color: "#15803d", display: "flex", alignItems: "center", gap: "4px" }}>
-                      <CheckCircle2 size={13} />
-                      Tudo aprovado
-                    </span>
-                  )}
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                  {/* Aprovar qty */}
+                return (
                   <div
+                    key={item.id}
                     style={{
                       display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      padding: "8px 10px",
-                      backgroundColor: "#f0fdf4",
-                      borderRadius: "8px",
-                      border: "1px solid #bbf7d0",
+                      flexDirection: "column",
+                      gap: "12px",
+                      padding: "12px 14px",
+                      backgroundColor: "#fafafa",
+                      borderRadius: "10px",
+                      border: "1px solid var(--gray-200)",
                     }}
                   >
-                    <PackageCheck size={16} style={{ color: "#15803d", flexShrink: 0 }} />
-                    <span style={{ fontSize: "13px", fontWeight: 600, color: "#15803d", whiteSpace: "nowrap" }}>Aprovar</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={item.quantity}
-                      value={approvedQty}
-                      onChange={(e) => setApprovedQty(item.id, Number(e.target.value))}
-                      style={{
-                        width: "60px",
-                        padding: "5px 8px",
-                        fontSize: "14px",
-                        fontWeight: 700,
-                        fontFamily: "inherit",
-                        textAlign: "center",
-                        borderRadius: "6px",
-                        border: "1px solid #86efac",
-                        backgroundColor: "#fff",
-                        color: "#15803d",
-                        outline: "none",
-                      }}
-                    />
-                  </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+                      <div>
+                        <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--gray-900)" }}>
+                          {item.quantity}x {item.product.name}
+                        </span>
+                        <span
+                          style={{
+                            display: "inline-block",
+                            marginLeft: "8px",
+                            padding: "2px 8px",
+                            borderRadius: "999px",
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            backgroundColor: CONDITION_CONFIG[item.condition].bg,
+                            color: CONDITION_CONFIG[item.condition].color,
+                          }}
+                        >
+                          {CONDITION_CONFIG[item.condition].label}
+                        </span>
+                      </div>
+                      {fullyRejected && (
+                        <span style={{ fontSize: "12px", fontWeight: 600, color: "#dc2626", display: "flex", alignItems: "center", gap: "4px" }}>
+                          <XCircle size={13} />
+                          Tudo reprovado
+                        </span>
+                      )}
+                      {fullyApproved && (
+                        <span style={{ fontSize: "12px", fontWeight: 600, color: "#15803d", display: "flex", alignItems: "center", gap: "4px" }}>
+                          <CheckCircle2 size={13} />
+                          Tudo aprovado
+                        </span>
+                      )}
+                    </div>
 
-                  {/* Reprovar qty */}
-                  <div
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                      {/* Aprovar qty */}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          padding: "8px 10px",
+                          backgroundColor: "#f0fdf4",
+                          borderRadius: "8px",
+                          border: "1px solid #bbf7d0",
+                        }}
+                      >
+                        <PackageCheck size={16} style={{ color: "#15803d", flexShrink: 0 }} />
+                        <span style={{ fontSize: "13px", fontWeight: 600, color: "#15803d", whiteSpace: "nowrap" }}>Aprovar</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={item.quantity}
+                          value={approvedQty}
+                          onChange={(e) => setApprovedQty(item.id, Number(e.target.value))}
+                          style={{
+                            width: "60px",
+                            padding: "5px 8px",
+                            fontSize: "14px",
+                            fontWeight: 700,
+                            fontFamily: "inherit",
+                            textAlign: "center",
+                            borderRadius: "6px",
+                            border: "1px solid #86efac",
+                            backgroundColor: "#fff",
+                            color: "#15803d",
+                            outline: "none",
+                          }}
+                        />
+                      </div>
+
+                      {/* Reprovar qty */}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          padding: "8px 10px",
+                          borderRadius: "8px",
+                          backgroundColor: "#fef2f2",
+                          border: "1px solid #fecaca",
+                        }}
+                      >
+                        <PackageX size={16} style={{ color: "#dc2626", flexShrink: 0 }} />
+                        <span style={{ fontSize: "13px", fontWeight: 600, color: "#dc2626", whiteSpace: "nowrap" }}>Reprovar</span>
+                        <span
+                          style={{
+                            width: "60px",
+                            padding: "5px 8px",
+                            fontSize: "14px",
+                            fontWeight: 700,
+                            fontFamily: "inherit",
+                            textAlign: "center",
+                            borderRadius: "6px",
+                            border: "1px solid #fecaca",
+                            backgroundColor: "#fff",
+                            color: "#dc2626",
+                          }}
+                        >
+                          {reprovedQty}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Auto-discard items (rasgado / não utilizável) */}
+        {hasAutoDiscard && (
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
+              <AlertTriangle size={14} style={{ color: "#92400e" }} />
+              <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-700)" }}>
+                Descartados automaticamente (sem aprovação)
+              </span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {autoDiscardItems.map((item) => (
+                <div
+                  key={item.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    padding: "10px 14px",
+                    backgroundColor: "#fef2f2",
+                    borderRadius: "10px",
+                    border: "1px solid #fecaca",
+                  }}
+                >
+                  <PackageX size={16} style={{ color: "#dc2626", flexShrink: 0 }} />
+                  <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--gray-900)" }}>
+                    {item.quantity}x {item.product.name}
+                  </span>
+                  <span
                     style={{
-                      display: "flex",
+                      marginLeft: "auto",
+                      display: "inline-flex",
                       alignItems: "center",
-                      gap: "10px",
-                      padding: "8px 10px",
-                      borderRadius: "8px",
-                      backgroundColor: "#fef2f2",
-                      border: "1px solid #fecaca",
+                      gap: "4px",
+                      padding: "2px 8px",
+                      borderRadius: "999px",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      backgroundColor: CONDITION_CONFIG[item.condition].bg,
+                      color: CONDITION_CONFIG[item.condition].color,
                     }}
                   >
-                    <PackageX size={16} style={{ color: "#dc2626", flexShrink: 0 }} />
-                    <span style={{ fontSize: "13px", fontWeight: 600, color: "#dc2626", whiteSpace: "nowrap" }}>Reprovar</span>
-                    <span
-                      style={{
-                        width: "60px",
-                        padding: "5px 8px",
-                        fontSize: "14px",
-                        fontWeight: 700,
-                        fontFamily: "inherit",
-                        textAlign: "center",
-                        borderRadius: "6px",
-                        border: "1px solid #fecaca",
-                        backgroundColor: "#fff",
-                        color: "#dc2626",
-                      }}
-                    >
-                      {reprovedQty}
-                    </span>
-                  </div>
+                    {CONDITION_CONFIG[item.condition].label}
+                  </span>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#dc2626", whiteSpace: "nowrap" }}>DESCARTE</span>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Summary */}
         <div
@@ -338,28 +398,6 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
             </div>
           </div>
         </div>
-
-        {/* Warning for approved non-GOOD items */}
-        {devolution.items.some((i) => (approvals[i.id] ?? 0) > 0 && i.condition !== "GOOD") && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: "8px",
-              padding: "10px 14px",
-              backgroundColor: "#fffbeb",
-              border: "1px solid #fde68a",
-              borderRadius: "8px",
-              fontSize: "12px",
-              color: "#92400e",
-            }}
-          >
-            <AlertTriangle size={14} style={{ marginTop: "1px", flexShrink: 0 }} />
-            <span>
-              Itens aprovados que estão <strong>rasgados ou não utilizáveis</strong> NÃO voltam ao estoque — serão descartados.
-            </span>
-          </div>
-        )}
 
         {/* Notes */}
         <div>
