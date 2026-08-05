@@ -130,14 +130,16 @@ model Devolution {
 }
 
 model DevolutionItem {
-  id           String      @id @default(cuid())
-  devolutionId String
-  devolution   Devolution  @relation(fields: [devolutionId], references: [id], onDelete: Cascade)
-  productId    String
-  product      Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
-  quantity     Int
-  condition    String      @default("GOOD")
-  approvedQty  Int?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id              String      @id @default(cuid())
+  devolutionId    String
+  devolution      Devolution  @relation(fields: [devolutionId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity        Int
+  condition       String      @default("GOOD")
+  approvedQty     Int?
+  repairedQty     Int         @default(0)
+  repairStartedAt DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 }

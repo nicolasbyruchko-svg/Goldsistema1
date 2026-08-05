@@ -4,7 +4,7 @@ import { getWorkers } from "@/actions/worker-actions";
 import { getProducts } from "@/actions/product-actions";
 import { NewDevolutionButton } from "@/components/devolutions/new-devolution-button";
 import { DevolutionsTable } from "@/components/devolutions/devolutions-table";
-import { Undo2, PackageCheck, PackageX, Clock } from "lucide-react";
+import { Undo2, PackageCheck, PackageX, Clock, Sofa } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Devoluções",
@@ -39,6 +39,14 @@ export default async function DevolutionsPage() {
       0
     );
 
+  const inRepairQty = devolutions
+    .reduce(
+      (sum, d) =>
+        sum +
+        d.items.reduce((s, i) => s + (i.condition === "SEWING" ? i.quantity - (i.repairedQty ?? 0) : 0), 0),
+      0
+    );
+
   return (
     <div style={{ padding: "32px 40px", flex: 1 }}>
       {/* Header */}
@@ -64,6 +72,7 @@ export default async function DevolutionsPage() {
         {[
           { label: "Pendentes de Higienização", value: pendingCount, color: "#92400e", bg: "#fef9c3", icon: Clock },
           { label: "Validadas (Ok)", value: approvedCount, color: "#0d9488", bg: "#ccfbf1" },
+          { label: "Peças em reparo", value: inRepairQty, color: "#4338ca", bg: "#e0e7ff", icon: Sofa },
           { label: "Peças aprovadas", value: approvedQty, color: "#15803d", bg: "#dcfce7", icon: PackageCheck },
           { label: "Peças reprovadas", value: reprovedQty, color: "#dc2626", bg: "#fee2e2", icon: PackageX },
         ].map((s) => (

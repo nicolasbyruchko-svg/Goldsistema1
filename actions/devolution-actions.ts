@@ -99,7 +99,10 @@ export async function approveDevolution(
 
         await tx.devolutionItem.update({
           where: { id: item.id },
-          data: { approvedQty },
+          data: {
+            approvedQty: item.condition === "GOOD" ? approvedQty : 0,
+            repairStartedAt: item.condition === "SEWING" ? new Date() : item.repairStartedAt,
+          },
         });
 
         if (approvedQty > 0 && item.condition === "GOOD") {
@@ -122,6 +125,52 @@ export async function approveDevolution(
     return { success: true as const };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Erro ao aprovar devolução";
+    return { success: false as const, error: msg };
+  }
+}
+
+export async function repairEntry(
+  devolutionItemId: string,
+  quantity: number
+) {
+  try {
+    const item = await prisma.devolutionItem.findUnique({
+      where: { id: devolutionItemId },
+    });
+
+    if (!item) {
+      return { success: false as const, error: "Item não encontrado" };
+    }
+
+    if (item.condition !== "SEWING") {
+      return { success: false as const, error: "Item não está em reparo" };
+    }
+
+    const remaining = item.quantity - item.repairedQty;
+    const qty = Math.min(Math.max(Math.round(quantity) || 0, 0), remaining);
+
+    if (qty <= 0) {
+      return { success: false as const, error: "Quantidade inválida" };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.devolutionItem.update({
+        where: { id: item.id },
+        data: { repairedQty: item.repairedQty + qty },
+      });
+
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { stockQuantity: { increment: qty } },
+      });
+    });
+
+    revalidatePath("/devolutions");
+    revalidatePath("/stock");
+    revalidatePath("/dashboard");
+    return { success: true as const };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Erro ao dar entrada de reparo";
     return { success: false as const, error: msg };
   }
 }

@@ -8,6 +8,7 @@ import {
   TrendingUp,
   CalendarRange,
   Building2,
+  Sofa,
 } from "lucide-react";
 import { formatDateTime, formatDeliveryStatus, formatCurrency, formatNumber } from "@/lib/utils";
 import { getSpendingReport } from "@/actions/reports-actions";
@@ -46,7 +47,7 @@ function StatusBadge({ status }: { status: string }) {
 
 export default async function DashboardPage() {
   // Busca todos os dados do dashboard em paralelo
-  const [deliveriesCount, products, recentDeliveries, spending] =
+  const [deliveriesCount, products, recentDeliveries, spending, repairItems] =
     await Promise.all([
       prisma.delivery.count(),
       prisma.product.findMany({ where: { archived: false }, orderBy: { name: "asc" } }),
@@ -60,7 +61,28 @@ export default async function DashboardPage() {
         },
       }),
       getSpendingReport(),
+      prisma.devolutionItem.findMany({
+        where: {
+          condition: "SEWING",
+        },
+        include: {
+          product: true,
+          devolution: { include: { worker: true } },
+        },
+      }),
     ]);
+
+  const inRepair = repairItems
+    .map((item) => {
+      const remaining = item.quantity - item.repairedQty;
+      const startedAt = item.repairStartedAt ?? item.createdAt;
+      const days = Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 86400000));
+      return { ...item, remaining, days };
+    })
+    .filter((i) => i.remaining > 0)
+    .sort((a, b) => b.days - a.days);
+
+  const inRepairQty = inRepair.reduce((s, i) => s + i.remaining, 0);
 
   const stockByPiece = products.reduce<Record<string, (typeof products)[number][]>>((acc, p) => {
     (acc[p.name] ??= []).push(p);
@@ -106,6 +128,13 @@ export default async function DashboardPage() {
       icon: CalendarRange,
       color: "#0284c7",
       bg: "#e0f2fe",
+    },
+    {
+      label: "Peças em reparo",
+      value: inRepairQty.toString(),
+      icon: Sofa,
+      color: "#4338ca",
+      bg: "#e0e7ff",
     },
   ];
 
@@ -195,6 +224,110 @@ export default async function DashboardPage() {
             </div>
           );
         })}
+      </div>
+
+      {/* Peças em reparo */}
+      <div
+        style={{
+          backgroundColor: "#ffffff",
+          borderRadius: "14px",
+          border: "1px solid var(--gray-200)",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
+          overflow: "hidden",
+          marginBottom: "24px",
+        }}
+      >
+        <div
+          style={{
+            padding: "20px 24px",
+            borderBottom: "1px solid var(--gray-200)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{ width: "34px", height: "34px", borderRadius: "9px", backgroundColor: "#e0e7ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Sofa size={17} style={{ color: "#4338ca" }} />
+            </div>
+            <div>
+              <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--navy-900)", margin: 0 }}>
+                Peças em Reparo
+              </h2>
+              <p style={{ fontSize: "12px", color: "var(--gray-500)", margin: "2px 0 0" }}>
+                Peças de costura aguardando reparo e há quanto tempo.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/devolutions"
+            style={{
+              fontSize: "13px",
+              fontWeight: 600,
+              color: "#0284c7",
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+            }}
+          >
+            Devoluções <ArrowRight size={14} />
+          </Link>
+        </div>
+
+        <div style={{ padding: "20px 24px" }}>
+          {inRepair.length === 0 ? (
+            <div style={{ textAlign: "center", color: "var(--gray-400)", padding: "20px 0" }}>
+              <p style={{ fontSize: "14px", margin: 0 }}>Nenhuma peça em reparo no momento.</p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {inRepair.map((item) => {
+              const daysLabel = item.days === 0 ? "hoje" : item.days === 1 ? "1 dia" : `${item.days} dias`;
+              return (
+                <div
+                  key={item.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    padding: "12px 14px",
+                    backgroundColor: "#fafafa",
+                    borderRadius: "10px",
+                    border: "1px solid var(--gray-200)",
+                  }}
+                >
+                  <div style={{ width: "36px", height: "36px", borderRadius: "8px", backgroundColor: "#eef2ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <Sofa size={16} style={{ color: "#4338ca" }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--gray-900)", margin: 0 }}>
+                      {item.remaining}x {item.product.name}
+                    </p>
+                    <p style={{ fontSize: "12px", color: "var(--gray-500)", margin: "2px 0 0" }}>
+                      {item.devolution.worker.name} · {item.quantity - item.repairedQty} de {item.quantity} em reparo
+                    </p>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      color: item.days > 7 ? "#dc2626" : item.days > 3 ? "#b45309" : "#4338ca",
+                      backgroundColor: "#fff",
+                      border: "1px solid var(--gray-200)",
+                      padding: "4px 10px",
+                      borderRadius: "999px",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {daysLabel}
+                  </span>
+                </div>
+              );
+            })}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Gasto por Contrato */}

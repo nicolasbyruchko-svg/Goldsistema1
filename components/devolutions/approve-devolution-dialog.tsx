@@ -2,13 +2,14 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, XCircle, AlertTriangle, PackageCheck, PackageX, Info } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, PackageCheck, PackageX, Info, Sofa } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { approveDevolution } from "@/actions/devolution-actions";
 
 const CONDITION_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
   GOOD: { label: "Bom estado", bg: "#dcfce7", color: "#15803d" },
+  SEWING: { label: "Costura", bg: "#e0e7ff", color: "#4338ca" },
   DAMAGED: { label: "Rasgado / Deteriorado", bg: "#fef3c7", color: "#92400e" },
   UNUSABLE: { label: "Não utilizável", bg: "#fee2e2", color: "#dc2626" },
 };
@@ -36,8 +37,10 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
   const router = useRouter();
 
   const approvableItems = devolution.items.filter((i) => i.condition === "GOOD");
-  const autoDiscardItems = devolution.items.filter((i) => i.condition !== "GOOD");
+  const sewingItems = devolution.items.filter((i) => i.condition === "SEWING");
+  const autoDiscardItems = devolution.items.filter((i) => i.condition !== "GOOD" && i.condition !== "SEWING");
   const hasAutoDiscard = autoDiscardItems.length > 0;
+  const hasSewing = sewingItems.length > 0;
 
   const [approvals, setApprovals] = useState<Record<string, number>>(() =>
     Object.fromEntries(approvableItems.map((item) => [item.id, item.quantity]))
@@ -72,6 +75,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
   const summary = useMemo(() => {
     let stockQty = 0;
     let discardQty = 0;
+    let repairQty = 0;
     for (const item of approvableItems) {
       const approvedQty = approvals[item.id] ?? 0;
       stockQty += approvedQty;
@@ -80,8 +84,11 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
     for (const item of autoDiscardItems) {
       discardQty += item.quantity;
     }
-    return { stockQty, discardQty };
-  }, [approvableItems, autoDiscardItems, approvals]);
+    for (const item of sewingItems) {
+      repairQty += item.quantity;
+    }
+    return { stockQty, discardQty, repairQty };
+  }, [approvableItems, autoDiscardItems, sewingItems, approvals]);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -309,6 +316,56 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
           </div>
         )}
 
+        {/* Sewing items (costura) */}
+        {hasSewing && (
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
+              <Sofa size={14} style={{ color: "#4338ca" }} />
+              <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-700)" }}>
+                Itens em costura / reparo (não voltam ao estoque agora)
+              </span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {sewingItems.map((item) => (
+                <div
+                  key={item.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    padding: "10px 14px",
+                    backgroundColor: "#eef2ff",
+                    borderRadius: "10px",
+                    border: "1px solid #c7d2fe",
+                  }}
+                >
+                  <Sofa size={16} style={{ color: "#4338ca", flexShrink: 0 }} />
+                  <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--gray-900)" }}>
+                    {item.quantity}x {item.product.name}
+                  </span>
+                  <span
+                    style={{
+                      marginLeft: "auto",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      padding: "2px 8px",
+                      borderRadius: "999px",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      backgroundColor: CONDITION_CONFIG[item.condition].bg,
+                      color: CONDITION_CONFIG[item.condition].color,
+                    }}
+                  >
+                    {CONDITION_CONFIG[item.condition].label}
+                  </span>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#4338ca", whiteSpace: "nowrap" }}>REPARO</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Auto-discard items (rasgado / não utilizável) */}
         {hasAutoDiscard && (
           <div>
@@ -363,7 +420,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
+            gridTemplateColumns: hasSewing ? "1fr 1fr 1fr" : "1fr 1fr",
             gap: "12px",
             padding: "14px",
             backgroundColor: "var(--gray-50)",
@@ -384,6 +441,21 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
               </span>
             </div>
           </div>
+          {hasSewing && (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ width: "32px", height: "32px", borderRadius: "8px", backgroundColor: "#e0e7ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Sofa size={16} style={{ color: "#4338ca" }} />
+              </div>
+              <div>
+                <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  Em reparo
+                </span>
+                <span style={{ display: "block", fontSize: "20px", fontWeight: 800, color: "#4338ca" }}>
+                  {summary.repairQty}
+                </span>
+              </div>
+            </div>
+          )}
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <div style={{ width: "32px", height: "32px", borderRadius: "8px", backgroundColor: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <PackageX size={16} style={{ color: "#dc2626" }} />

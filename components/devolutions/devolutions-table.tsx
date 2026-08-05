@@ -2,9 +2,10 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronUp, ChevronDown, ChevronsUpDown, Building2, CheckCircle2, Clock, ClipboardCheck } from "lucide-react";
+import { ChevronUp, ChevronDown, ChevronsUpDown, Building2, CheckCircle2, Clock, ClipboardCheck, Sofa } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { ApproveDevolutionDialog } from "@/components/devolutions/approve-devolution-dialog";
+import { RepairEntryDialog } from "@/components/devolutions/repair-entry-dialog";
 
 type SortDirection = "asc" | "desc";
 
@@ -20,6 +21,7 @@ const REASON_LABELS: Record<string, string> = {
 
 const CONDITION_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
   GOOD: { label: "Bom estado", bg: "#dcfce7", color: "#15803d" },
+  SEWING: { label: "Costura", bg: "#e0e7ff", color: "#4338ca" },
   DAMAGED: { label: "Rasgado / Deteriorado", bg: "#fef3c7", color: "#92400e" },
   UNUSABLE: { label: "Não utilizável", bg: "#fee2e2", color: "#dc2626" },
 };
@@ -54,6 +56,7 @@ interface DevolutionItem {
   quantity: number;
   condition: string;
   approvedQty: number | null;
+  repairedQty: number;
   product: { name: string };
 }
 
@@ -72,6 +75,7 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
   const router = useRouter();
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "devolvedAt", direction: "desc" });
   const [approveDevolution, setApproveDevolution] = useState<Devolution | null>(null);
+  const [repairItems, setRepairItems] = useState<DevolutionItem[] | null>(null);
 
   const handleSort = useCallback((key: string) => {
     setSortConfig((prev) => ({
@@ -252,23 +256,60 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
                       <ClipboardCheck size={13} />
                       Aprovar
                     </button>
-                  ) : devolution.notes ? (
-                    <div
-                      style={{
-                        padding: "8px 12px",
-                        backgroundColor: "#fffbeb",
-                        border: "1px solid #fde68a",
-                        borderRadius: "8px",
-                        fontSize: "12px",
-                        color: "#92400e",
-                        lineHeight: 1.5,
-                        wordBreak: "break-word",
-                      }}
-                      title={devolution.notes}
-                    >
-                      {devolution.notes}
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      {devolution.notes && (
+                        <div
+                          style={{
+                            padding: "8px 12px",
+                            backgroundColor: "#fffbeb",
+                            border: "1px solid #fde68a",
+                            borderRadius: "8px",
+                            fontSize: "12px",
+                            color: "#92400e",
+                            lineHeight: 1.5,
+                            wordBreak: "break-word",
+                          }}
+                          title={devolution.notes}
+                        >
+                          {devolution.notes}
+                        </div>
+                      )}
+                      {(() => {
+                        const repairItemsList = devolution.items.filter(
+                          (i) => i.condition === "SEWING" && i.repairedQty < i.quantity
+                        );
+                        if (repairItemsList.length === 0) return null;
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setRepairItems(repairItemsList)}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              padding: "7px 14px",
+                              fontSize: "12px",
+                              fontWeight: 600,
+                              fontFamily: "inherit",
+                              borderRadius: "8px",
+                              border: "1px solid #c7d2fe",
+                              backgroundColor: "#eef2ff",
+                              color: "#4338ca",
+                              cursor: "pointer",
+                              transition: "opacity 0.15s",
+                              whiteSpace: "nowrap",
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.85"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
+                          >
+                            <Sofa size={13} />
+                            Dar entrada após reparo
+                          </button>
+                        );
+                      })()}
                     </div>
-                  ) : null}
+                  )}
                 </td>
                 </tr>
               );
@@ -282,6 +323,14 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
           devolution={approveDevolution}
           open={true}
           onClose={() => setApproveDevolution(null)}
+        />
+      )}
+
+      {repairItems && (
+        <RepairEntryDialog
+          items={repairItems}
+          open={true}
+          onClose={() => setRepairItems(null)}
         />
       )}
     </>
