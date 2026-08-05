@@ -53,7 +53,7 @@ interface DevolutionItem {
   id: string;
   quantity: number;
   condition: string;
-  approved: boolean | null;
+  approvedQty: number | null;
   product: { name: string };
 }
 
@@ -90,11 +90,11 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
         aVal = a.project?.name ?? "";
         bVal = b.project?.name ?? "";
       } else if (sortConfig.key === "goodQty") {
-        aVal = a.items.filter((i) => i.approved === true).reduce((s, i) => s + i.quantity, 0);
-        bVal = b.items.filter((i) => i.approved === true).reduce((s, i) => s + i.quantity, 0);
+        aVal = a.items.reduce((s, i) => s + (i.approvedQty ?? 0), 0);
+        bVal = b.items.reduce((s, i) => s + (i.approvedQty ?? 0), 0);
       } else if (sortConfig.key === "badQty") {
-        aVal = a.items.filter((i) => i.approved === false).reduce((s, i) => s + i.quantity, 0);
-        bVal = b.items.filter((i) => i.approved === false).reduce((s, i) => s + i.quantity, 0);
+        aVal = a.items.reduce((s, i) => s + (i.quantity - (i.approvedQty ?? 0)), 0);
+        bVal = b.items.reduce((s, i) => s + (i.quantity - (i.approvedQty ?? 0)), 0);
       } else if (sortConfig.key === "status") {
         aVal = a.status;
         bVal = b.status;
@@ -165,8 +165,8 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
           </thead>
           <tbody>
             {sortedDevolutions.map((devolution, idx) => {
-              const approvedQty = devolution.items.filter((i) => i.approved === true).reduce((s, i) => s + i.quantity, 0);
-              const reprovedQty = devolution.items.filter((i) => i.approved === false).reduce((s, i) => s + i.quantity, 0);
+              const approvedQty = devolution.items.reduce((s, i) => s + (i.approvedQty ?? 0), 0);
+              const reprovedQty = devolution.items.reduce((s, i) => s + (i.quantity - (i.approvedQty ?? 0)), 0);
               const isPending = devolution.status === "PENDING";
               return (
                 <tr

@@ -136,7 +136,7 @@ model DevolutionItem {
   product      Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
   quantity     Int
   condition    String      @default("GOOD")
-  approved     Boolean?
+  approvedQty  Int?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 }

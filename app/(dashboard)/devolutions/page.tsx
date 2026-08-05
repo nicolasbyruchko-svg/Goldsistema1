@@ -26,9 +26,7 @@ export default async function DevolutionsPage() {
     .reduce(
       (sum, d) =>
         sum +
-        d.items
-          .filter((i) => i.approved === true)
-          .reduce((s, i) => s + i.quantity, 0),
+        d.items.reduce((s, i) => s + (i.approvedQty ?? 0), 0),
       0
     );
 
@@ -37,9 +35,7 @@ export default async function DevolutionsPage() {
     .reduce(
       (sum, d) =>
         sum +
-        d.items
-          .filter((i) => i.approved === false)
-          .reduce((s, i) => s + i.quantity, 0),
+        d.items.reduce((s, i) => s + (i.quantity - (i.approvedQty ?? 0)), 0),
       0
     );
 

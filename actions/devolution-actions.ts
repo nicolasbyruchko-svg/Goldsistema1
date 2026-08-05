@@ -71,7 +71,7 @@ export async function createDevolution(rawData: DevolutionFormValues) {
 
 export async function approveDevolution(
   devolutionId: string,
-  itemApprovals: Array<{ itemId: string; approved: boolean }>
+  itemApprovals: Array<{ itemId: string; approvedQty: number }>
 ) {
   try {
     const devolution = await prisma.devolution.findUnique({
@@ -87,21 +87,24 @@ export async function approveDevolution(
       return { success: false as const, error: "Devolução já foi aprovada" };
     }
 
-    const approvalMap = new Map(itemApprovals.map((a) => [a.itemId, a.approved]));
+    const approvalMap = new Map(itemApprovals.map((a) => [a.itemId, a.approvedQty]));
 
     await prisma.$transaction(async (tx) => {
       for (const item of devolution.items) {
-        const isApproved = approvalMap.get(item.id) ?? false;
+        const approvedQty = Math.min(
+          Math.max(approvalMap.get(item.id) ?? 0, 0),
+          item.quantity
+        );
 
         await tx.devolutionItem.update({
           where: { id: item.id },
-          data: { approved: isApproved },
+          data: { approvedQty },
         });
 
-        if (isApproved && item.condition === "GOOD") {
+        if (approvedQty > 0 && item.condition === "GOOD") {
           await tx.product.update({
             where: { id: item.productId },
-            data: { stockQuantity: { increment: item.quantity } },
+            data: { stockQuantity: { increment: approvedQty } },
           });
         }
       }
