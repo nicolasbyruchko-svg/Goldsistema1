@@ -4,7 +4,7 @@ import { getWorkers } from "@/actions/worker-actions";
 import { getProducts } from "@/actions/product-actions";
 import { NewDevolutionButton } from "@/components/devolutions/new-devolution-button";
 import { DevolutionsTable } from "@/components/devolutions/devolutions-table";
-import { Undo2, PackageCheck, PackageX } from "lucide-react";
+import { Undo2, PackageCheck, PackageX, Clock } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Devoluções",
@@ -18,23 +18,30 @@ export default async function DevolutionsPage() {
     getProducts(),
   ]);
 
-  const returnedToStock = devolutions.reduce(
-    (sum, d) =>
-      sum +
-      d.items
-        .filter((i) => i.condition === "GOOD")
-        .reduce((s, i) => s + i.quantity, 0),
-    0
-  );
+  const pendingCount = devolutions.filter((d) => d.status === "PENDING").length;
+  const approvedCount = devolutions.filter((d) => d.status === "APPROVED").length;
 
-  const discarded = devolutions.reduce(
-    (sum, d) =>
-      sum +
-      d.items
-        .filter((i) => i.condition !== "GOOD")
-        .reduce((s, i) => s + i.quantity, 0),
-    0
-  );
+  const returnedToStock = devolutions
+    .filter((d) => d.status === "APPROVED")
+    .reduce(
+      (sum, d) =>
+        sum +
+        d.items
+          .filter((i) => i.condition === "GOOD")
+          .reduce((s, i) => s + i.quantity, 0),
+      0
+    );
+
+  const discarded = devolutions
+    .filter((d) => d.status === "APPROVED")
+    .reduce(
+      (sum, d) =>
+        sum +
+        d.items
+          .filter((i) => i.condition !== "GOOD")
+          .reduce((s, i) => s + i.quantity, 0),
+      0
+    );
 
   return (
     <div style={{ padding: "32px 40px", flex: 1 }}>
@@ -59,7 +66,8 @@ export default async function DevolutionsPage() {
       {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px", marginBottom: "28px" }}>
         {[
-          { label: "Total de Devoluções", value: devolutions.length, color: "#0d9488", bg: "#ccfbf1" },
+          { label: "Pendentes de triagem", value: pendingCount, color: "#92400e", bg: "#fef9c3", icon: Clock },
+          { label: "Aprovadas", value: approvedCount, color: "#0d9488", bg: "#ccfbf1" },
           { label: "Itens reincorporados ao estoque", value: returnedToStock, color: "#15803d", bg: "#dcfce7", icon: PackageCheck },
           { label: "Itens descartados (rasgados/não utilizáveis)", value: discarded, color: "#dc2626", bg: "#fee2e2", icon: PackageX },
         ].map((s) => (

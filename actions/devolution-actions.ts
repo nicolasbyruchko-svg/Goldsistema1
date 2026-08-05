@@ -31,11 +31,9 @@ export async function createDevolution(rawData: DevolutionFormValues) {
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // Busca o trabalhador para herdar o projectId
       const worker = await tx.worker.findUnique({ where: { id: workerId } });
       if (!worker) throw new Error("Trabalhador não encontrado");
 
-      // Garante que todos os produtos existem
       for (const item of items) {
         const product = await tx.product.findUnique({
           where: { id: item.productId },
@@ -48,6 +46,7 @@ export async function createDevolution(rawData: DevolutionFormValues) {
           workerId,
           projectId: worker.projectId,
           reason,
+          status: "PENDING",
           devolvedAt: new Date(devolvedAt + "T12:00:00"),
           items: {
             create: items.map((item) => ({
@@ -59,10 +58,41 @@ export async function createDevolution(rawData: DevolutionFormValues) {
         },
       });
 
-      // Só reincorpora ao estoque itens em bom estado. Itens "rasgados" ou
-      // "não utilizáveis" são descartados e NÃO geram entrada no estoque.
-      for (const item of items) {
-        if (item.condition === "GOOD") {
+      return devolution;
+    });
+
+    revalidatePath("/devolutions");
+    return { success: true as const, data: result };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Erro ao registrar devolução";
+    return { success: false as const, error: msg };
+  }
+}
+
+export async function approveDevolution(
+  devolutionId: string,
+  itemApprovals: Array<{ itemId: string; approved: boolean }>
+) {
+  try {
+    const devolution = await prisma.devolution.findUnique({
+      where: { id: devolutionId },
+      include: { items: true },
+    });
+
+    if (!devolution) {
+      return { success: false as const, error: "Devolução não encontrada" };
+    }
+
+    if (devolution.status === "APPROVED") {
+      return { success: false as const, error: "Devolução já foi aprovada" };
+    }
+
+    const approvalMap = new Map(itemApprovals.map((a) => [a.itemId, a.approved]));
+
+    await prisma.$transaction(async (tx) => {
+      for (const item of devolution.items) {
+        const isApproved = approvalMap.get(item.id);
+        if (isApproved && item.condition === "GOOD") {
           await tx.product.update({
             where: { id: item.productId },
             data: { stockQuantity: { increment: item.quantity } },
@@ -70,15 +100,18 @@ export async function createDevolution(rawData: DevolutionFormValues) {
         }
       }
 
-      return devolution;
+      await tx.devolution.update({
+        where: { id: devolutionId },
+        data: { status: "APPROVED" },
+      });
     });
 
     revalidatePath("/devolutions");
     revalidatePath("/stock");
     revalidatePath("/dashboard");
-    return { success: true as const, data: result };
+    return { success: true as const };
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Erro ao registrar devolução";
+    const msg = err instanceof Error ? err.message : "Erro ao aprovar devolução";
     return { success: false as const, error: msg };
   }
 }
