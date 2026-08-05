@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { getSpendingReport, getUsageReport } from "@/actions/reports-actions";
+import { getSpendingReport, getUsageReport, getHygieneRepairReport } from "@/actions/reports-actions";
 import { ReportExportButtons } from "@/components/reports/export-buttons";
 import { PeriodSpendCard } from "@/components/reports/period-spend-card";
 import { UsageReportFilters } from "@/components/reports/usage-report-filters";
 import { UsageReportExportButtons } from "@/components/reports/usage-report-export-buttons";
-import { BarChart3, TrendingUp, Package, ClipboardList, Building2, User, Tag, ClipboardCheck, AlertTriangle } from "lucide-react";
+import { HygieneRepairReportExportButtons } from "@/components/reports/hygiene-repair-report-export-buttons";
+import { BarChart3, TrendingUp, Package, ClipboardList, Building2, User, Tag, ClipboardCheck, AlertTriangle, Droplets, Wrench } from "lucide-react";
 import { formatCurrency, formatNumber, formatDate, formatReason } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -33,7 +34,7 @@ export default async function ReportsPage({
   const usageFromStr = typeof sp.usageFrom === "string" ? sp.usageFrom : "";
   const usageToStr = typeof sp.usageTo === "string" ? sp.usageTo : "";
 
-  const [report, usageReport] = await Promise.all([
+  const [report, usageReport, hygieneRepairReport] = await Promise.all([
     getSpendingReport({
       from: fromStr ? new Date(fromStr + "T00:00:00") : undefined,
       to: toStr ? new Date(toStr + "T23:59:59") : undefined,
@@ -45,6 +46,7 @@ export default async function ReportsPage({
       from: usageFromStr ? new Date(usageFromStr + "T00:00:00") : undefined,
       to: usageToStr ? new Date(usageToStr + "T23:59:59") : undefined,
     }),
+    getHygieneRepairReport(),
   ]);
   const { totals, byProject, byWorker, byReason } = report;
 
@@ -349,6 +351,239 @@ export default async function ReportsPage({
             </div>
           )}
         </div>
+      </div>
+
+      {/* Relatório de Higienização e Reparo */}
+      <div style={{ marginTop: "32px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", marginBottom: "16px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{ width: "36px", height: "36px", borderRadius: "9px", backgroundColor: "#e0e7ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Droplets size={18} style={{ color: "#4338ca" }} />
+            </div>
+            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "var(--navy-900)", margin: 0 }}>
+              Higienização e Reparo
+            </h2>
+          </div>
+          <HygieneRepairReportExportButtons report={hygieneRepairReport} />
+        </div>
+
+        <p style={{ fontSize: "13px", color: "var(--gray-500)", margin: "0 0 16px 0" }}>
+          Itens devolvidos aguardando triagem (higienização) e itens em processo de reparo (costura).
+        </p>
+
+        {/* Stats */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px", marginBottom: "16px" }}>
+          <div style={{ backgroundColor: "#fff", borderRadius: "10px", padding: "16px 20px", boxShadow: "0 1px 3px rgba(0,0,0,0.07)", border: "1px solid var(--gray-200)" }}>
+            <span style={{ fontSize: "12px", color: "var(--gray-500)", fontWeight: 500 }}>Total Pendente</span>
+            <span style={{ display: "block", fontSize: "22px", fontWeight: 800, color: "var(--navy-900)", lineHeight: 1.1, marginTop: "2px" }}>
+              {formatNumber(hygieneRepairReport.totals.totalItems)}
+            </span>
+          </div>
+          <div style={{ backgroundColor: "#fff", borderRadius: "10px", padding: "16px 20px", boxShadow: "0 1px 3px rgba(0,0,0,0.07)", border: "1px solid var(--gray-200)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+              <Droplets size={14} style={{ color: "#d97706" }} />
+              <span style={{ fontSize: "12px", color: "var(--gray-500)", fontWeight: 500 }}>Em Higienização</span>
+            </div>
+            <span style={{ display: "block", fontSize: "22px", fontWeight: 800, color: "#d97706", lineHeight: 1.1, marginTop: "2px" }}>
+              {formatNumber(hygieneRepairReport.totals.totalHygiene)}
+            </span>
+          </div>
+          <div style={{ backgroundColor: "#fff", borderRadius: "10px", padding: "16px 20px", boxShadow: "0 1px 3px rgba(0,0,0,0.07)", border: "1px solid var(--gray-200)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+              <Wrench size={14} style={{ color: "#4338ca" }} />
+              <span style={{ fontSize: "12px", color: "var(--gray-500)", fontWeight: 500 }}>Em Reparo</span>
+            </div>
+            <span style={{ display: "block", fontSize: "22px", fontWeight: 800, color: "#4338ca", lineHeight: 1.1, marginTop: "2px" }}>
+              {formatNumber(hygieneRepairReport.totals.totalRepair)}
+            </span>
+          </div>
+        </div>
+
+        {/* Tabela Higienização */}
+        {hygieneRepairReport.hygieneRows.length > 0 && (
+          <div
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: "14px",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
+              border: "1px solid var(--gray-200)",
+              overflow: "hidden",
+              marginBottom: "16px",
+            }}
+          >
+            <div
+              style={{
+                padding: "14px 24px",
+                borderBottom: "1px solid var(--gray-200)",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <Droplets size={16} style={{ color: "#d97706" }} />
+              <span style={{ fontSize: "15px", fontWeight: 600, color: "var(--gray-800)" }}>
+                Itens em Higienização — Aguardando triagem
+              </span>
+            </div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
+                <thead>
+                  <tr style={{ backgroundColor: "var(--gray-50)", borderBottom: "1px solid var(--gray-200)" }}>
+                    {["Colaborador", "Contrato", "Peça", "Tamanho", "Total", "Aprovadas", "Reprovadas", "Pendentes", "Devolução"].map((col) => (
+                      <th
+                        key={col}
+                        style={{
+                          padding: "12px 20px",
+                          textAlign: ["Total", "Aprovadas", "Reprovadas", "Pendentes"].includes(col) ? "right" : "left",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          color: "var(--gray-500)",
+                          letterSpacing: "0.6px",
+                          textTransform: "uppercase",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {hygieneRepairReport.hygieneRows.map((row, idx) => (
+                    <tr
+                      key={row.id}
+                      style={{ borderBottom: idx < hygieneRepairReport.hygieneRows.length - 1 ? "1px solid var(--gray-100)" : "none" }}
+                    >
+                      <td style={{ padding: "12px 20px", fontWeight: 600, color: "var(--gray-900)" }}>
+                        {row.workerName}
+                      </td>
+                      <td style={{ padding: "12px 20px", color: "var(--gray-600)", fontSize: "13px" }}>
+                        {row.projectName}
+                      </td>
+                      <td style={{ padding: "12px 20px", fontWeight: 600, color: "var(--gray-900)" }}>
+                        {row.productName}
+                      </td>
+                      <td style={{ padding: "12px 20px" }}>
+                        <span style={{ fontFamily: "monospace", fontSize: "12px", backgroundColor: "var(--gray-100)", padding: "2px 7px", borderRadius: "5px", color: "var(--gray-700)" }}>
+                          {row.productSize || "Único"}
+                        </span>
+                      </td>
+                      <td style={{ padding: "12px 20px", textAlign: "right", fontWeight: 600, color: "var(--gray-700)" }}>
+                        {row.quantity}
+                      </td>
+                      <td style={{ padding: "12px 20px", textAlign: "right", fontWeight: 600, color: "#059669" }}>
+                        {row.approvedQty}
+                      </td>
+                      <td style={{ padding: "12px 20px", textAlign: "right", fontWeight: 600, color: "#dc2626" }}>
+                        {row.rejectedQty}
+                      </td>
+                      <td style={{ padding: "12px 20px", textAlign: "right", fontWeight: 700, color: "#d97706" }}>
+                        {row.pendingQty}
+                      </td>
+                      <td style={{ padding: "12px 20px", whiteSpace: "nowrap", color: "var(--gray-600)" }}>
+                        {formatDate(row.devolvedAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Tabela Reparo */}
+        {hygieneRepairReport.repairRows.length > 0 && (
+          <div
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: "14px",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
+              border: "1px solid var(--gray-200)",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                padding: "14px 24px",
+                borderBottom: "1px solid var(--gray-200)",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <Wrench size={16} style={{ color: "#4338ca" }} />
+              <span style={{ fontSize: "15px", fontWeight: 600, color: "var(--gray-800)" }}>
+                Itens em Reparo — Aguardando conserto
+              </span>
+            </div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
+                <thead>
+                  <tr style={{ backgroundColor: "var(--gray-50)", borderBottom: "1px solid var(--gray-200)" }}>
+                    {["Colaborador", "Contrato", "Peça", "Tamanho", "Total", "Já Reparados", "Pendentes", "Devolução"].map((col) => (
+                      <th
+                        key={col}
+                        style={{
+                          padding: "12px 20px",
+                          textAlign: ["Total", "Já Reparados", "Pendentes"].includes(col) ? "right" : "left",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          color: "var(--gray-500)",
+                          letterSpacing: "0.6px",
+                          textTransform: "uppercase",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {hygieneRepairReport.repairRows.map((row, idx) => (
+                    <tr
+                      key={row.id}
+                      style={{ borderBottom: idx < hygieneRepairReport.repairRows.length - 1 ? "1px solid var(--gray-100)" : "none" }}
+                    >
+                      <td style={{ padding: "12px 20px", fontWeight: 600, color: "var(--gray-900)" }}>
+                        {row.workerName}
+                      </td>
+                      <td style={{ padding: "12px 20px", color: "var(--gray-600)", fontSize: "13px" }}>
+                        {row.projectName}
+                      </td>
+                      <td style={{ padding: "12px 20px", fontWeight: 600, color: "var(--gray-900)" }}>
+                        {row.productName}
+                      </td>
+                      <td style={{ padding: "12px 20px" }}>
+                        <span style={{ fontFamily: "monospace", fontSize: "12px", backgroundColor: "var(--gray-100)", padding: "2px 7px", borderRadius: "5px", color: "var(--gray-700)" }}>
+                          {row.productSize || "Único"}
+                        </span>
+                      </td>
+                      <td style={{ padding: "12px 20px", textAlign: "right", fontWeight: 600, color: "var(--gray-700)" }}>
+                        {row.quantity}
+                      </td>
+                      <td style={{ padding: "12px 20px", textAlign: "right", fontWeight: 600, color: "#059669" }}>
+                        {row.repairedQty}
+                      </td>
+                      <td style={{ padding: "12px 20px", textAlign: "right", fontWeight: 700, color: "#4338ca" }}>
+                        {row.pendingQty}
+                      </td>
+                      <td style={{ padding: "12px 20px", whiteSpace: "nowrap", color: "var(--gray-600)" }}>
+                        {formatDate(row.devolvedAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {hygieneRepairReport.totals.totalRows === 0 && (
+          <div style={{ backgroundColor: "#fff", borderRadius: "14px", boxShadow: "0 1px 3px rgba(0,0,0,0.07)", border: "1px solid var(--gray-200)", padding: "40px 24px", textAlign: "center", color: "var(--gray-400)", fontSize: "13px" }}>
+            Nenhum item em higienização ou reparo no momento.
+          </div>
+        )}
       </div>
     </div>
   );

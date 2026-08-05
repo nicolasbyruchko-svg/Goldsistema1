@@ -287,3 +287,131 @@ export async function getSpendingReport(period?: SpendingPeriod): Promise<Spendi
     byReason: [...reasonMap.values()].sort(sortByTotal),
   };
 }
+
+export type HygieneRepairRow = {
+  id: string;
+  workerName: string;
+  workerMatricula: string;
+  projectName: string;
+  productName: string;
+  productSize: string | null;
+  quantity: number;
+  approvedQty: number;
+  rejectedQty: number;
+  pendingQty: number;
+  repairedQty: number;
+  status: "HIGIENIZACAO" | "REPARO";
+  devolvedAt: Date;
+  condition: string;
+};
+
+export type HygieneRepairReport = {
+  generatedAt: Date;
+  totals: {
+    totalRows: number;
+    totalHygiene: number;
+    totalRepair: number;
+    totalItems: number;
+  };
+  hygieneRows: HygieneRepairRow[];
+  repairRows: HygieneRepairRow[];
+};
+
+export async function getHygieneRepairReport(): Promise<HygieneRepairReport> {
+  const now = new Date();
+
+  const devolutions = await prisma.devolution.findMany({
+    where: {
+      status: { in: ["PENDING", "PARTIAL"] },
+    },
+    include: {
+      worker: { select: { name: true, matricula: true } },
+      project: { select: { name: true } },
+      items: {
+        include: { product: { select: { name: true, size: true } } },
+      },
+    },
+    orderBy: { devolvedAt: "desc" },
+  });
+
+  const sewingDevolutions = await prisma.devolution.findMany({
+    where: {
+      status: { in: ["APPROVED", "PARTIAL"] },
+      items: { some: { condition: "SEWING", quantity: { gt: 0 } } },
+    },
+    include: {
+      worker: { select: { name: true, matricula: true } },
+      project: { select: { name: true } },
+      items: {
+        where: { condition: "SEWING" },
+        include: { product: { select: { name: true, size: true } } },
+      },
+    },
+    orderBy: { devolvedAt: "desc" },
+  });
+
+  const hygieneRows: HygieneRepairRow[] = [];
+  for (const dev of devolutions) {
+    for (const item of dev.items) {
+      if (item.condition !== "GOOD") continue;
+      const approved = item.approvedQty ?? 0;
+      const rejected = item.rejectedQty ?? 0;
+      const pending = item.quantity - approved - rejected;
+      if (pending <= 0) continue;
+
+      hygieneRows.push({
+        id: item.id,
+        workerName: dev.worker.name,
+        workerMatricula: dev.worker.matricula,
+        projectName: dev.project?.name ?? "Sem contrato",
+        productName: item.product.name,
+        productSize: item.product.size,
+        quantity: item.quantity,
+        approvedQty: approved,
+        rejectedQty: rejected,
+        pendingQty: pending,
+        repairedQty: 0,
+        status: "HIGIENIZACAO",
+        devolvedAt: dev.devolvedAt,
+        condition: item.condition,
+      });
+    }
+  }
+
+  const repairRows: HygieneRepairRow[] = [];
+  for (const dev of sewingDevolutions) {
+    for (const item of dev.items) {
+      const remaining = item.quantity - item.repairedQty;
+      if (remaining <= 0) continue;
+
+      repairRows.push({
+        id: item.id,
+        workerName: dev.worker.name,
+        workerMatricula: dev.worker.matricula,
+        projectName: dev.project?.name ?? "Sem contrato",
+        productName: item.product.name,
+        productSize: item.product.size,
+        quantity: item.quantity,
+        approvedQty: 0,
+        rejectedQty: 0,
+        pendingQty: remaining,
+        repairedQty: item.repairedQty,
+        status: "REPARO",
+        devolvedAt: dev.devolvedAt,
+        condition: item.condition,
+      });
+    }
+  }
+
+  return {
+    generatedAt: now,
+    totals: {
+      totalRows: hygieneRows.length + repairRows.length,
+      totalHygiene: hygieneRows.reduce((s, r) => s + r.pendingQty, 0),
+      totalRepair: repairRows.reduce((s, r) => s + r.pendingQty, 0),
+      totalItems: hygieneRows.reduce((s, r) => s + r.pendingQty, 0) + repairRows.reduce((s, r) => s + r.pendingQty, 0),
+    },
+    hygieneRows,
+    repairRows,
+  };
+}
