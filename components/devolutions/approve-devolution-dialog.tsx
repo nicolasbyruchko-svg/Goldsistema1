@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, XCircle, AlertTriangle, PackageCheck, PackageX, Info, Sofa } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, PackageCheck, PackageX, Info, Sofa, Clock } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { approveDevolution } from "@/actions/devolution-actions";
@@ -78,6 +78,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
 
   const summary = useMemo(() => {
     let stockQty = 0;
+    let pendingQty = 0;
     let discardQty = 0;
     let repairQty = 0;
     let newApprovals = 0;
@@ -86,7 +87,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
       const previousApproved = item.approvedQty ?? 0;
       stockQty += approvedQty;
       newApprovals += Math.max(0, approvedQty - previousApproved);
-      discardQty += item.quantity - approvedQty;
+      pendingQty += item.quantity - approvedQty;
     }
     for (const item of autoDiscardItems) {
       discardQty += item.quantity;
@@ -94,7 +95,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
     for (const item of sewingItems) {
       repairQty += item.quantity;
     }
-    return { stockQty, discardQty, repairQty, newApprovals };
+    return { stockQty, pendingQty, discardQty, repairQty, newApprovals };
   }, [approvableItems, autoDiscardItems, sewingItems, approvals]);
 
   const handleSubmit = async () => {
@@ -187,7 +188,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
               onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#fef2f2"; }}
             >
               <XCircle size={13} />
-              Reprovar todos
+              Manter pendente
             </button>
           </div>
         )}
@@ -307,7 +308,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
                         />
                       </div>
 
-                      {/* Reprovar qty */}
+                      {/* Pendente qty */}
                       <div
                         style={{
                           display: "flex",
@@ -315,12 +316,12 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
                           gap: "10px",
                           padding: "8px 10px",
                           borderRadius: "8px",
-                          backgroundColor: "#fef2f2",
-                          border: "1px solid #fecaca",
+                          backgroundColor: "#fefce8",
+                          border: "1px solid #fde68a",
                         }}
                       >
-                        <PackageX size={16} style={{ color: "#dc2626", flexShrink: 0 }} />
-                        <span style={{ fontSize: "13px", fontWeight: 600, color: "#dc2626", whiteSpace: "nowrap" }}>Pendente</span>
+                        <Clock size={16} style={{ color: "#92400e", flexShrink: 0 }} />
+                        <span style={{ fontSize: "13px", fontWeight: 600, color: "#92400e", whiteSpace: "nowrap" }}>Pendente</span>
                         <span
                           style={{
                             width: "60px",
@@ -330,9 +331,9 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
                             fontFamily: "inherit",
                             textAlign: "center",
                             borderRadius: "6px",
-                            border: "1px solid #fecaca",
+                            border: "1px solid #fde68a",
                             backgroundColor: "#fff",
-                            color: "#dc2626",
+                            color: "#92400e",
                           }}
                         >
                           {reprovedQty}
@@ -450,7 +451,13 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: hasSewing ? "1fr 1fr 1fr" : "1fr 1fr",
+            gridTemplateColumns: (() => {
+              let cols = 1;
+              if (summary.pendingQty > 0) cols++;
+              if (summary.discardQty > 0) cols++;
+              if (hasSewing) cols++;
+              return `repeat(${cols}, 1fr)`;
+            })(),
             gap: "12px",
             padding: "14px",
             backgroundColor: "var(--gray-50)",
@@ -471,6 +478,21 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
               </span>
             </div>
           </div>
+          {summary.pendingQty > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ width: "32px", height: "32px", borderRadius: "8px", backgroundColor: "#fef9c3", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Clock size={16} style={{ color: "#92400e" }} />
+              </div>
+              <div>
+                <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  Pendentes
+                </span>
+                <span style={{ display: "block", fontSize: "20px", fontWeight: 800, color: "#92400e" }}>
+                  {summary.pendingQty}
+                </span>
+              </div>
+            </div>
+          )}
           {hasSewing && (
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <div style={{ width: "32px", height: "32px", borderRadius: "8px", backgroundColor: "#e0e7ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -486,19 +508,21 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
               </div>
             </div>
           )}
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div style={{ width: "32px", height: "32px", borderRadius: "8px", backgroundColor: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <PackageX size={16} style={{ color: "#dc2626" }} />
+          {summary.discardQty > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ width: "32px", height: "32px", borderRadius: "8px", backgroundColor: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <PackageX size={16} style={{ color: "#dc2626" }} />
+              </div>
+              <div>
+                <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  Descartados
+                </span>
+                <span style={{ display: "block", fontSize: "20px", fontWeight: 800, color: "#dc2626" }}>
+                  {summary.discardQty}
+                </span>
+              </div>
             </div>
-            <div>
-              <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                Descartados
-              </span>
-              <span style={{ display: "block", fontSize: "20px", fontWeight: 800, color: "#dc2626" }}>
-                {summary.discardQty}
-              </span>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Notes */}
