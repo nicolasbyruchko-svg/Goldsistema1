@@ -92,30 +92,59 @@ export async function approveDevolution(
 
     await prisma.$transaction(async (tx) => {
       for (const item of devolution.items) {
-        const approvedQty = Math.min(
+        const requestedQty = Math.min(
           Math.max(approvalMap.get(item.id) ?? 0, 0),
           item.quantity
         );
 
-        await tx.devolutionItem.update({
-          where: { id: item.id },
-          data: {
-            approvedQty: item.condition === "GOOD" ? approvedQty : 0,
-            repairStartedAt: item.condition === "SEWING" ? new Date() : item.repairStartedAt,
-          },
-        });
+        if (item.condition === "GOOD") {
+          const previousApproved = item.approvedQty ?? 0;
+          const newApprovedQty = Math.max(requestedQty, previousApproved);
+          const increment = newApprovedQty - previousApproved;
 
-        if (approvedQty > 0 && item.condition === "GOOD") {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stockQuantity: { increment: approvedQty } },
+          await tx.devolutionItem.update({
+            where: { id: item.id },
+            data: { approvedQty: newApprovedQty },
+          });
+
+          if (increment > 0) {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { stockQuantity: { increment } },
+            });
+          }
+        } else if (item.condition === "SEWING") {
+          await tx.devolutionItem.update({
+            where: { id: item.id },
+            data: {
+              approvedQty: 0,
+              repairStartedAt: item.repairStartedAt ?? new Date(),
+            },
+          });
+        } else {
+          await tx.devolutionItem.update({
+            where: { id: item.id },
+            data: { approvedQty: 0 },
           });
         }
       }
 
+      const allItemsFullyProcessed = devolution.items.every((item) => {
+        if (item.condition === "GOOD") {
+          const requested = approvalMap.get(item.id) ?? 0;
+          return requested >= item.quantity;
+        }
+        return true;
+      });
+
+      const newStatus = allItemsFullyProcessed ? "APPROVED" : "PARTIAL";
+
       await tx.devolution.update({
         where: { id: devolutionId },
-        data: { status: "APPROVED", notes: notes?.trim() ? notes.trim() : null },
+        data: {
+          status: newStatus,
+          notes: notes?.trim() ? notes.trim() : devolution.notes,
+        },
       });
     });
 

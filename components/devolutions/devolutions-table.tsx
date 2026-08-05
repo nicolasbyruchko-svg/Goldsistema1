@@ -28,6 +28,7 @@ const CONDITION_CONFIG: Record<string, { label: string; bg: string; color: strin
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
   PENDING: { label: "Higienização", bg: "#fef9c3", color: "#92400e" },
+  PARTIAL: { label: "Parcial", bg: "#e0e7ff", color: "#4338ca" },
   APPROVED: { label: "Ok", bg: "#dcfce7", color: "#15803d" },
 };
 
@@ -42,7 +43,7 @@ function ConditionBadge({ condition }: { condition: string }) {
 
 function StatusBadge({ status }: { status: string }) {
   const style = STATUS_CONFIG[status] ?? { label: status, bg: "#f3f4f6", color: "#6b7280" };
-  const Icon = status === "APPROVED" ? CheckCircle2 : Clock;
+  const Icon = status === "APPROVED" ? CheckCircle2 : status === "PARTIAL" ? ClipboardCheck : Clock;
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 10px", borderRadius: "999px", fontSize: "11px", fontWeight: 600, backgroundColor: style.bg, color: style.color, whiteSpace: "nowrap" }}>
       <Icon size={12} />
@@ -173,12 +174,14 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
               const approvedQty = devolution.items.reduce((s, i) => s + (i.approvedQty ?? 0), 0);
               const reprovedQty = devolution.items.reduce((s, i) => s + (i.quantity - (i.approvedQty ?? 0)), 0);
               const isPending = devolution.status === "PENDING";
+              const isPartial = devolution.status === "PARTIAL";
+              const canApprove = isPending || isPartial;
               return (
                 <tr
                   key={devolution.id}
                   style={{
                     borderBottom: idx < sortedDevolutions.length - 1 ? "1px solid var(--gray-100)" : "none",
-                    backgroundColor: isPending ? "#fffbeb" : "transparent",
+                    backgroundColor: isPending ? "#fffbeb" : isPartial ? "#eef2ff" : "transparent",
                   }}
                 >
                   <td style={{ padding: "14px 24px" }}>
@@ -220,18 +223,18 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
                       ))}
                     </div>
                   </td>
-<td style={{ padding: "14px 24px" }}>
+                <td style={{ padding: "14px 24px" }}>
                   <span style={{ fontSize: "15px", fontWeight: 700, color: approvedQty > 0 ? "#15803d" : "var(--gray-300)" }}>
-                    {isPending ? "—" : approvedQty}
+                    {isPending && !isPartial ? "—" : approvedQty}
                   </span>
                 </td>
                 <td style={{ padding: "14px 24px" }}>
                   <span style={{ fontSize: "15px", fontWeight: 700, color: reprovedQty > 0 ? "#dc2626" : "var(--gray-300)" }}>
-                    {isPending ? "—" : reprovedQty}
+                    {isPending && !isPartial ? "—" : reprovedQty}
                   </span>
                 </td>
 <td style={{ padding: "14px 24px", maxWidth: "260px" }}>
-                  {isPending ? (
+                  {canApprove ? (
                     <button
                       type="button"
                       onClick={() => setApproveDevolution(devolution)}
@@ -244,9 +247,9 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
                         fontWeight: 600,
                         fontFamily: "inherit",
                         borderRadius: "8px",
-                        border: "none",
-                        backgroundColor: "#059669",
-                        color: "#fff",
+                        border: isPartial ? "1px solid #c7d2fe" : "none",
+                        backgroundColor: isPartial ? "#eef2ff" : "#059669",
+                        color: isPartial ? "#4338ca" : "#fff",
                         cursor: "pointer",
                         transition: "opacity 0.15s",
                       }}
@@ -254,7 +257,7 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
                       onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
                     >
                       <ClipboardCheck size={13} />
-                      Aprovar
+                      {isPartial ? "Aprovar restante" : "Aprovar"}
                     </button>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -274,6 +277,11 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
                         >
                           {devolution.notes}
                         </div>
+                      )}
+                      {isPartial && (
+                        <span style={{ fontSize: "11px", fontWeight: 500, color: "#4338ca", fontStyle: "italic" }}>
+                          Aguardando aprovação dos itens restantes
+                        </span>
                       )}
                       {(() => {
                         const repairItemsList = devolution.items.filter(

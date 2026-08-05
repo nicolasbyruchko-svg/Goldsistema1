@@ -18,6 +18,7 @@ interface DevolutionItem {
   id: string;
   quantity: number;
   condition: string;
+  approvedQty: number | null;
   product: { name: string };
 }
 
@@ -43,7 +44,9 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
   const hasSewing = sewingItems.length > 0;
 
   const [approvals, setApprovals] = useState<Record<string, number>>(() =>
-    Object.fromEntries(approvableItems.map((item) => [item.id, item.quantity]))
+    Object.fromEntries(
+      approvableItems.map((item) => [item.id, item.approvedQty ?? item.quantity])
+    )
   );
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,7 +55,8 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
   const setApprovedQty = (itemId: string, qty: number) => {
     const item = approvableItems.find((i) => i.id === itemId);
     if (!item) return;
-    const clamped = Math.min(Math.max(Math.round(qty) || 0, 0), item.quantity);
+    const min = item.approvedQty ?? 0;
+    const clamped = Math.min(Math.max(Math.round(qty) || 0, min), item.quantity);
     setApprovals((prev) => ({ ...prev, [itemId]: clamped }));
   };
 
@@ -67,7 +71,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
   const handleRejectAll = () => {
     const newVals: Record<string, number> = {};
     for (const item of approvableItems) {
-      newVals[item.id] = 0;
+      newVals[item.id] = item.approvedQty ?? 0;
     }
     setApprovals(newVals);
   };
@@ -76,9 +80,12 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
     let stockQty = 0;
     let discardQty = 0;
     let repairQty = 0;
+    let newApprovals = 0;
     for (const item of approvableItems) {
       const approvedQty = approvals[item.id] ?? 0;
+      const previousApproved = item.approvedQty ?? 0;
       stockQty += approvedQty;
+      newApprovals += Math.max(0, approvedQty - previousApproved);
       discardQty += item.quantity - approvedQty;
     }
     for (const item of autoDiscardItems) {
@@ -87,7 +94,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
     for (const item of sewingItems) {
       repairQty += item.quantity;
     }
-    return { stockQty, discardQty, repairQty };
+    return { stockQty, discardQty, repairQty, newApprovals };
   }, [approvableItems, autoDiscardItems, sewingItems, approvals]);
 
   const handleSubmit = async () => {
@@ -115,14 +122,19 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
   };
 
   const allApproved = approvableItems.every((item) => (approvals[item.id] ?? 0) === item.quantity);
-  const allRejected = approvableItems.length > 0 && approvableItems.every((item) => (approvals[item.id] ?? 0) === 0);
+  const allRejected = approvableItems.length > 0 && approvableItems.every((item) => (approvals[item.id] ?? 0) === (item.approvedQty ?? 0));
+  const hasPreviousApprovals = approvableItems.some((item) => (item.approvedQty ?? 0) > 0);
 
   return (
     <Dialog
       open={open}
       onClose={onClose}
       title="Aprovar Devolução"
-      description={`Triagem dos itens devolvidos por ${devolution.worker.name}. Itens rasgados ou não utilizáveis são descartados automaticamente.`}
+      description={
+        hasPreviousApprovals
+          ? `Aprovação parcial de ${devolution.worker.name}. Itens já aprovados anteriormente estão marcados. Itens rasgados ou não utilizáveis são descartados automaticamente.`
+          : `Triagem dos itens devolvidos por ${devolution.worker.name}. Itens rasgados ou não utilizáveis são descartados automaticamente.`
+      }
       maxWidth="720px"
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -189,9 +201,11 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               {approvableItems.map((item) => {
                 const approvedQty = approvals[item.id] ?? 0;
+                const previousApproved = item.approvedQty ?? 0;
                 const reprovedQty = item.quantity - approvedQty;
                 const fullyApproved = approvedQty === item.quantity;
-                const fullyRejected = approvedQty === 0;
+                const fullyRejected = approvedQty === previousApproved;
+                const hasPartial = previousApproved > 0 && approvedQty < item.quantity;
 
                 return (
                   <div
@@ -225,11 +239,27 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
                         >
                           {CONDITION_CONFIG[item.condition].label}
                         </span>
+                        {hasPartial && (
+                          <span
+                            style={{
+                              display: "inline-block",
+                              marginLeft: "6px",
+                              padding: "2px 8px",
+                              borderRadius: "999px",
+                              fontSize: "11px",
+                              fontWeight: 600,
+                              backgroundColor: "#fef3c7",
+                              color: "#92400e",
+                            }}
+                          >
+                            {previousApproved} já aprovada{previousApproved > 1 ? "s" : ""}
+                          </span>
+                        )}
                       </div>
                       {fullyRejected && (
                         <span style={{ fontSize: "12px", fontWeight: 600, color: "#dc2626", display: "flex", alignItems: "center", gap: "4px" }}>
                           <XCircle size={13} />
-                          Tudo reprovado
+                          Sem novas aprovações
                         </span>
                       )}
                       {fullyApproved && (
@@ -257,7 +287,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
                         <span style={{ fontSize: "13px", fontWeight: 600, color: "#15803d", whiteSpace: "nowrap" }}>Aprovar</span>
                         <input
                           type="number"
-                          min={0}
+                          min={previousApproved}
                           max={item.quantity}
                           value={approvedQty}
                           onChange={(e) => setApprovedQty(item.id, Number(e.target.value))}
@@ -290,7 +320,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
                         }}
                       >
                         <PackageX size={16} style={{ color: "#dc2626", flexShrink: 0 }} />
-                        <span style={{ fontSize: "13px", fontWeight: 600, color: "#dc2626", whiteSpace: "nowrap" }}>Reprovar</span>
+                        <span style={{ fontSize: "13px", fontWeight: 600, color: "#dc2626", whiteSpace: "nowrap" }}>Pendente</span>
                         <span
                           style={{
                             width: "60px",
@@ -434,10 +464,10 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
             </div>
             <div>
               <span style={{ display: "block", fontSize: "11px", color: "var(--gray-500)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                Voltam ao estoque
+                {summary.newApprovals > 0 ? "Entrando agora" : "Total aprovado"}
               </span>
               <span style={{ display: "block", fontSize: "20px", fontWeight: 800, color: "#15803d" }}>
-                {summary.stockQty}
+                {summary.newApprovals > 0 ? `+${summary.newApprovals}` : summary.stockQty}
               </span>
             </div>
           </div>
@@ -569,7 +599,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
                 <path d="M21 12a9 9 0 11-6.219-8.56" />
               </svg>
             )}
-            {allRejected ? "Confirmar reprovação" : "Confirmar aprovação"}
+            {allRejected ? "Confirmar reprovação" : hasPreviousApprovals && summary.newApprovals > 0 ? "Aprovar selecionadas" : "Confirmar aprovação"}
           </button>
         </div>
       </div>
