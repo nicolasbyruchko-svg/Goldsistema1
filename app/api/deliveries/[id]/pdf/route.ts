@@ -32,6 +32,14 @@ export async function GET(
       );
     }
 
+    // Ao abrir a ficha (Ver Ficha) pela primeira vez, marca a entrega como assinada
+    if (delivery.status === "PENDING_SIGNATURE") {
+      await prisma.delivery.update({
+        where: { id },
+        data: { status: "SIGNED" },
+      });
+    }
+
     const templatePath = path.join(
       process.cwd(),
       "public",
