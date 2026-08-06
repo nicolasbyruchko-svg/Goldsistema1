@@ -143,7 +143,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
       repairQty += item.quantity;
     }
     return { stockQty, pendingQty, rejectedQty, discardQty, repairQty, newApprovals };
-  }, [approvableItems, autoDiscardItems, sewingItems, approvals, rejections, getItemState]);
+  }, [approvableItems, autoDiscardItems, sewingItems, getItemState]);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);

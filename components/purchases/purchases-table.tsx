@@ -24,6 +24,7 @@ interface Purchase {
   supplier: string;
   issueDate: Date;
   totalValue: number;
+  createdBy: { id: string; name: string; username: string } | null;
   items: PurchaseItem[];
 }
 
@@ -93,6 +94,7 @@ export function PurchasesTable({ purchases }: { purchases: Purchase[] }) {
             <th style={thStyle("nfNumber")} onClick={() => handleSort("nfNumber")}>NF{renderSortIcon("nfNumber")}</th>
             <th style={thStyle("supplier")} onClick={() => handleSort("supplier")}>Fornecedor{renderSortIcon("supplier")}</th>
             <th style={thStyle("issueDate")} onClick={() => handleSort("issueDate")}>Data de Emissão{renderSortIcon("issueDate")}</th>
+            <th style={{ ...thStyle("createdBy"), cursor: "default" }}>Usuário</th>
             <th style={{ ...thStyle("items"), cursor: "default" }}>Itens</th>
             <th style={thStyle("totalValue")} onClick={() => handleSort("totalValue")}>Valor Total{renderSortIcon("totalValue")}</th>
           </tr>
@@ -117,6 +119,9 @@ export function PurchasesTable({ purchases }: { purchases: Purchase[] }) {
                   <CalendarDays size={13} style={{ color: "var(--gray-400)" }} />
                   {formatDate(invoice.issueDate)}
                 </span>
+              </td>
+              <td style={{ padding: "14px 24px", color: "var(--gray-600)", fontSize: "13px", whiteSpace: "nowrap" }}>
+                {invoice.createdBy?.name ?? <span style={{ color: "var(--gray-300)" }}>—</span>}
               </td>
               <td style={{ padding: "14px 24px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { getSessionUser } from "@/lib/auth";
 import { productSchema, type ProductFormValues } from "@/lib/validations/product";
 import { toNumber } from "@/lib/utils";
 import type { SerializableProduct } from "@/lib/types";
@@ -11,9 +12,15 @@ function serializeProduct<T extends { unitCost: unknown }>(p: T): Omit<T, "unitC
   return { ...p, unitCost: toNumber(p.unitCost) };
 }
 
+const USER_SELECT = { select: { id: true, name: true, username: true } } as const;
+
 export async function getProducts(): Promise<SerializableProduct[]> {
   const products = await prisma.product.findMany({
     where: { archived: false },
+    include: {
+      createdBy: USER_SELECT,
+      updatedBy: USER_SELECT,
+    },
     orderBy: { name: "asc" },
   });
   return products.map(serializeProduct);
@@ -31,6 +38,7 @@ export async function createProduct(rawData: ProductFormValues) {
   const data = parsed.data;
 
   try {
+    const user = await getSessionUser();
     const product = await prisma.product.create({
       data: {
         name: data.name.trim(),
@@ -44,6 +52,8 @@ export async function createProduct(rawData: ProductFormValues) {
         supplier: data.supplier?.trim() || null,
         stockQuantity: data.stockQuantity ?? 0,
         minStock: data.minStock ?? 5,
+        createdByUserId: user?.id ?? null,
+        updatedByUserId: user?.id ?? null,
       },
     });
     revalidatePath("/stock");
@@ -69,6 +79,7 @@ export async function updateProduct(id: string, rawData: ProductFormValues) {
   const data = parsed.data;
 
   try {
+    const user = await getSessionUser();
     const existingProduct = await prisma.product.findUnique({ where: { id } });
     const product = await prisma.product.update({
       where: { id },
@@ -84,6 +95,7 @@ export async function updateProduct(id: string, rawData: ProductFormValues) {
         supplier: data.supplier?.trim() || null,
         stockQuantity: data.stockQuantity ?? 0,
         minStock: data.minStock ?? 5,
+        updatedByUserId: user?.id ?? null,
       },
     });
     revalidatePath("/stock");
@@ -95,11 +107,12 @@ export async function updateProduct(id: string, rawData: ProductFormValues) {
 
 export async function deleteProduct(id: string) {
   try {
+    const user = await getSessionUser();
     // Exclusão lógica: o produto sai do catálogo/estoque, mas os lançamentos
     // antigos (fichas de EPI, entregas, compras, devoluções) são preservados.
     await prisma.product.update({
       where: { id },
-      data: { archived: true },
+      data: { archived: true, updatedByUserId: user?.id ?? null },
     });
     revalidatePath("/stock");
     revalidatePath("/dashboard");

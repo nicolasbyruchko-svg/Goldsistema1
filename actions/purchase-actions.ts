@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { getSessionUser } from "@/lib/auth";
 import {
   purchaseSchema,
   type PurchaseFormValues,
@@ -17,6 +18,7 @@ type PurchaseSerializable = {
   totalValue: number;
   createdAt: Date;
   updatedAt: Date;
+  createdBy: { id: string; name: string; username: string } | null;
   items: Array<{
     id: string;
     purchaseInvoiceId: string;
@@ -35,7 +37,10 @@ type PurchaseSerializable = {
 };
 
 type InvoiceWithItems = Prisma.PurchaseInvoiceGetPayload<{
-  include: { items: { include: { product: true } } };
+  include: {
+    items: { include: { product: true } };
+    createdBy: { select: { id: true; name: true; username: true } };
+  };
 }>;
 
 // Converte Decimals do Prisma (totalValue, unitCost) para number
@@ -55,6 +60,7 @@ export async function getPurchases(): Promise<PurchaseSerializable[]> {
   const invoices = await prisma.purchaseInvoice.findMany({
     include: {
       items: { include: { product: true } },
+      createdBy: { select: { id: true, name: true, username: true } },
     },
     orderBy: { issueDate: "desc" },
   });
@@ -73,6 +79,7 @@ export async function createPurchaseInvoice(rawData: PurchaseFormValues) {
   const data = parsed.data;
 
   try {
+    const user = await getSessionUser();
     const result = await prisma.$transaction(async (tx) => {
       // Garante que todos os produtos existem
       for (const item of data.items) {
@@ -94,6 +101,7 @@ export async function createPurchaseInvoice(rawData: PurchaseFormValues) {
           supplier: data.supplier.trim(),
           issueDate: new Date(data.issueDate + "T12:00:00"),
           totalValue,
+          createdByUserId: user?.id ?? null,
           items: {
             create: data.items.map((i) => ({
               productId: i.productId,
@@ -102,7 +110,10 @@ export async function createPurchaseInvoice(rawData: PurchaseFormValues) {
             })),
           },
         },
-        include: { items: { include: { product: true } } },
+        include: {
+          items: { include: { product: true } },
+          createdBy: { select: { id: true, name: true, username: true } },
+        },
       });
 
       // Incrementa estoque e atualiza "último custo" + fornecedor
@@ -113,6 +124,7 @@ export async function createPurchaseInvoice(rawData: PurchaseFormValues) {
             stockQuantity: { increment: item.quantity },
             unitCost: item.unitCost,
             supplier: data.supplier.trim(),
+            updatedByUserId: user?.id ?? null,
           },
         });
       }

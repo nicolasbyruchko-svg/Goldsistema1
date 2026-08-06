@@ -21,4 +21,6 @@ export type SerializableProduct = {
   minStock: number;
   createdAt: Date;
   updatedAt: Date;
+  createdBy: { id: string; name: string; username: string } | null;
+  updatedBy: { id: string; name: string; username: string } | null;
 };

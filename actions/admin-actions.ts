@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/auth";
 
 const RESET_PASSWORD = "13371337";
 
@@ -27,6 +28,7 @@ export async function resetModule(
   }
 
   try {
+    const user = await requireAdmin();
     const result = await prisma.$transaction(async (tx) => {
       const counts = {
         deliveries: 0,
@@ -46,7 +48,9 @@ export async function resetModule(
       }
       if (module === "ALL") {
         // Após remover entradas/saídas, o estoque é zerado para refletir o catálogo.
-        await tx.product.updateMany({ data: { stockQuantity: 0 } });
+        await tx.product.updateMany({
+          data: { stockQuantity: 0, updatedByUserId: user.id },
+        });
         stockReset = true;
       }
 

@@ -83,6 +83,7 @@ export function StockTable({ products }: { products: SerializableProduct[] }) {
             <th style={{ ...thStyle("caNumber"), cursor: "default" }}>CA / Validade</th>
             <th style={thStyle("unitCost")} onClick={() => handleSort("unitCost")}>Custo Unit.{renderSortIcon("unitCost")}</th>
             <th style={thStyle("supplier")} onClick={() => handleSort("supplier")}>Fornecedor{renderSortIcon("supplier")}</th>
+            <th style={{ ...thStyle("updatedBy"), cursor: "default" }}>Últ. alteração por</th>
             <th style={thStyle("stockQuantity")} onClick={() => handleSort("stockQuantity")}>Estoque{renderSortIcon("stockQuantity")}</th>
             <th style={thStyle("minStock")} onClick={() => handleSort("minStock")}>Mín.{renderSortIcon("minStock")}</th>
             <th style={{ ...thStyle("actions"), cursor: "default" }}>Ações</th>
@@ -140,6 +141,9 @@ export function StockTable({ products }: { products: SerializableProduct[] }) {
                   <span style={{ fontSize: "12px", color: "var(--gray-600)" }}>
                     {product.supplier || <span style={{ color: "var(--gray-300)" }}>—</span>}
                   </span>
+                </td>
+                <td style={{ padding: "14px 20px", fontSize: "12px", color: "var(--gray-600)", whiteSpace: "nowrap" }}>
+                  {(product.updatedBy?.name ?? product.createdBy?.name) || <span style={{ color: "var(--gray-300)" }}>—</span>}
                 </td>
                 <td style={{ padding: "14px 20px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>

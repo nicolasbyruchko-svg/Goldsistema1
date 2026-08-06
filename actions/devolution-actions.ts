@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { getSessionUser } from "@/lib/auth";
 import {
   devolutionSchema,
   type DevolutionFormValues,
@@ -12,6 +13,8 @@ export async function getDevolutions() {
     include: {
       worker: true,
       project: true,
+      createdBy: { select: { id: true, name: true, username: true } },
+      approvedBy: { select: { id: true, name: true, username: true } },
       items: { include: { product: true } },
     },
     orderBy: { devolvedAt: "desc" },
@@ -30,6 +33,7 @@ export async function createDevolution(rawData: DevolutionFormValues) {
   const { workerId, reason, devolvedAt, items } = parsed.data;
 
   try {
+    const user = await getSessionUser();
     const result = await prisma.$transaction(async (tx) => {
       const worker = await tx.worker.findUnique({ where: { id: workerId } });
       if (!worker) throw new Error("Trabalhador não encontrado");
@@ -47,6 +51,7 @@ export async function createDevolution(rawData: DevolutionFormValues) {
           projectId: worker.projectId,
           reason,
           status: "PENDING",
+          createdByUserId: user?.id ?? null,
           devolvedAt: new Date(devolvedAt + "T12:00:00"),
           items: {
             create: items.map((item) => ({
@@ -88,6 +93,7 @@ export async function approveDevolution(
       return { success: false as const, error: "Devolução já foi aprovada" };
     }
 
+    const user = await getSessionUser();
     const approvalMap = new Map(itemApprovals.map((a) => [a.itemId, a]));
 
     await prisma.$transaction(async (tx) => {
@@ -119,7 +125,10 @@ export async function approveDevolution(
           if (newAdditionalApproved > 0) {
             await tx.product.update({
               where: { id: item.productId },
-              data: { stockQuantity: { increment: newAdditionalApproved } },
+              data: {
+                stockQuantity: { increment: newAdditionalApproved },
+                updatedByUserId: user?.id ?? null,
+              },
             });
           }
         } else if (item.condition === "SEWING") {
@@ -154,6 +163,7 @@ export async function approveDevolution(
         where: { id: devolutionId },
         data: {
           status: newStatus,
+          approvedByUserId: user?.id ?? null,
           notes: notes?.trim() ? notes.trim() : devolution.notes,
         },
       });
@@ -193,15 +203,19 @@ export async function repairEntry(
       return { success: false as const, error: "Quantidade inválida" };
     }
 
+    const user = await getSessionUser();
     await prisma.$transaction(async (tx) => {
       await tx.devolutionItem.update({
         where: { id: item.id },
-        data: { repairedQty: item.repairedQty + qty },
+        data: { repairedQty: item.repairedQty + qty, repairedByUserId: user?.id ?? null },
       });
 
       await tx.product.update({
         where: { id: item.productId },
-        data: { stockQuantity: { increment: qty } },
+        data: {
+          stockQuantity: { increment: qty },
+          updatedByUserId: user?.id ?? null,
+        },
       });
     });
 

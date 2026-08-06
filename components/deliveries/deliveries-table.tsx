@@ -15,6 +15,7 @@ interface Delivery {
   id: string;
   status: string;
   deliveredAt: Date;
+  createdBy: { id: string; name: string; username: string } | null;
   worker: { name: string; matricula: string };
   project: { name: string } | null;
   items: { id: string; quantity: number; product: { name: string } }[];
@@ -109,6 +110,7 @@ export function DeliveriesTable({ deliveries }: { deliveries: Delivery[] }) {
             <th style={thStyle("worker")} onClick={() => handleSort("worker")}>Trabalhador{renderSortIcon("worker")}</th>
             <th style={thStyle("project")} onClick={() => handleSort("project")}>Contrato / CC{renderSortIcon("project")}</th>
             <th style={thStyle("deliveredAt")} onClick={() => handleSort("deliveredAt")}>Data{renderSortIcon("deliveredAt")}</th>
+            <th style={{ ...thStyle("createdBy"), cursor: "default" }}>Usuário</th>
             <th style={{ ...thStyle("items"), cursor: "default" }}>Itens</th>
             <th style={thStyle("status")} onClick={() => handleSort("status")}>Status{renderSortIcon("status")}</th>
             <th style={{ ...thStyle("actions"), cursor: "default" }}>Ações</th>
@@ -135,6 +137,9 @@ export function DeliveriesTable({ deliveries }: { deliveries: Delivery[] }) {
               </td>
               <td style={{ padding: "14px 24px", color: "var(--gray-600)", fontSize: "13px", whiteSpace: "nowrap" }}>
                 {formatDateTime(delivery.deliveredAt)}
+              </td>
+              <td style={{ padding: "14px 24px", color: "var(--gray-600)", fontSize: "13px", whiteSpace: "nowrap" }}>
+                {delivery.createdBy?.name ?? <span style={{ color: "var(--gray-300)" }}>—</span>}
               </td>
               <td style={{ padding: "14px 24px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>

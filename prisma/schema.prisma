@@ -15,6 +15,13 @@ model User {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  deliveries        Delivery[]
+  purchaseInvoices  PurchaseInvoice[]
+  devolutions       Devolution[]       @relation("DevolutionCreatedBy")
+  approvedDevolutions Devolution[]     @relation("DevolutionApprovedBy")
+  productsCreated   Product[]          @relation("ProductCreatedBy")
+  productsUpdated   Product[]          @relation("ProductUpdatedBy")
+  repairs           DevolutionItem[]   @relation("DevolutionItemRepairedBy")
 }
 
 model Project {
@@ -62,6 +69,10 @@ model Product {
   archived      Boolean               @default(false)
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
+  createdByUserId String?
+  createdBy     User?                 @relation("ProductCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUserId String?
+  updatedBy     User?                 @relation("ProductUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
   deliveryItems DeliveryItem[]
   purchaseItems PurchaseInvoiceItem[]
   devolutionItems DevolutionItem[]
@@ -77,6 +88,8 @@ model Delivery {
   deliveredAt DateTime       @default(now())
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+  createdByUserId String?
+  createdBy   User?          @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
   items       DeliveryItem[]
 }
 
@@ -102,6 +115,8 @@ model PurchaseInvoice {
   items      PurchaseInvoiceItem[]
   createdAt  DateTime              @default(now())
   updatedAt  DateTime              @updatedAt
+  createdByUserId String?
+  createdBy  User?                 @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
 }
 
 model PurchaseInvoiceItem {
@@ -128,6 +143,10 @@ model Devolution {
   devolvedAt DateTime          @default(now())
   createdAt  DateTime          @default(now())
   updatedAt  DateTime          @updatedAt
+  createdByUserId String?
+  createdBy  User?             @relation("DevolutionCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approvedByUserId String?
+  approvedBy User?             @relation("DevolutionApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
   items      DevolutionItem[]
 }
 
@@ -145,4 +164,6 @@ model DevolutionItem {
   repairStartedAt DateTime?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+  repairedByUserId String?
+  repairedBy      User?       @relation("DevolutionItemRepairedBy", fields: [repairedByUserId], references: [id], onDelete: SetNull)
 }

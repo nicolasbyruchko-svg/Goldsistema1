@@ -67,6 +67,8 @@ interface Devolution {
   status: string;
   notes: string | null;
   devolvedAt: Date;
+  createdBy: { id: string; name: string; username: string } | null;
+  approvedBy: { id: string; name: string; username: string } | null;
   worker: { name: string; matricula: string };
   project: { name: string } | null;
   items: DevolutionItem[];
@@ -164,6 +166,7 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
               <th style={thStyle("project")} onClick={() => handleSort("project")}>Contrato / CC{renderSortIcon("project")}</th>
               <th style={thStyle("devolvedAt")} onClick={() => handleSort("devolvedAt")}>Data{renderSortIcon("devolvedAt")}</th>
               <th style={thStyle("reason")} onClick={() => handleSort("reason")}>Motivo{renderSortIcon("reason")}</th>
+              <th style={{ ...thStyle("createdBy"), cursor: "default" }}>Registrado por</th>
               <th style={thStyle("status")} onClick={() => handleSort("status")}>Status{renderSortIcon("status")}</th>
               <th style={{ ...thStyle("items"), cursor: "default" }}>Itens</th>
               <th style={thStyle("goodQty")} onClick={() => handleSort("goodQty")}>Aprovadas{renderSortIcon("goodQty")}</th>
@@ -212,8 +215,16 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
                       {REASON_LABELS[devolution.reason] ?? devolution.reason}
                     </span>
                   </td>
+                  <td style={{ padding: "14px 24px", color: "var(--gray-600)", fontSize: "13px", whiteSpace: "nowrap" }}>
+                    {devolution.createdBy?.name ?? <span style={{ color: "var(--gray-300)" }}>—</span>}
+                  </td>
                   <td style={{ padding: "14px 24px" }}>
                     <StatusBadge status={devolution.status} />
+                    {devolution.approvedBy && (
+                      <span style={{ display: "block", fontSize: "11px", color: "var(--gray-400)", marginTop: "4px", whiteSpace: "nowrap" }}>
+                        por {devolution.approvedBy.name}
+                      </span>
+                    )}
                   </td>
                   <td style={{ padding: "14px 24px" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>

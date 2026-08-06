@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { getSessionUser } from "@/lib/auth";
 import {
   deliverySchema,
   type DeliveryFormValues,
@@ -13,6 +14,7 @@ export async function getDeliveries(projectId?: string) {
     include: {
       worker: true,
       project: true,
+      createdBy: { select: { id: true, name: true, username: true } },
       items: {
         include: { product: true },
       },
@@ -33,6 +35,7 @@ export async function createDelivery(rawData: DeliveryFormValues) {
   const { workerId, items } = parsed.data;
 
   try {
+    const user = await getSessionUser();
     const result = await prisma.$transaction(async (tx) => {
       // Busca o trabalhador para herdar o projectId
       const worker = await tx.worker.findUnique({ where: { id: workerId } });
@@ -60,6 +63,7 @@ export async function createDelivery(rawData: DeliveryFormValues) {
         data: {
           workerId,
           projectId: worker.projectId,
+          createdByUserId: user?.id ?? null,
           items: {
             create: items.map((item) => ({
               productId: item.productId,
@@ -75,7 +79,10 @@ export async function createDelivery(rawData: DeliveryFormValues) {
       for (const item of items) {
         await tx.product.update({
           where: { id: item.productId },
-          data: { stockQuantity: { decrement: item.quantity } },
+          data: {
+            stockQuantity: { decrement: item.quantity },
+            updatedByUserId: user?.id ?? null,
+          },
         });
       }
 
