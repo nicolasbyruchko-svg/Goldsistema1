@@ -27,6 +27,25 @@ const SIZE_PALETTE = [
 
 const STORAGE_KEY = "stock-charts-order";
 
+const SIZE_ORDER = ["PP", "P", "M", "G", "GG", "XG", "XGG", "XXG", "2G", "3G"];
+
+// Ordena tamanhos em ordem progressiva (numérico antes de alfanumérico, depois
+// pela sequência PP/P/M/G/GG), com "Único" por último.
+function sizeSortKey(label: string): [number, number] {
+  if (label === "Único") return [2, 0];
+  const n = Number(label.replace(",", "."));
+  if (!Number.isNaN(n) && /^[\d.,]+$/.test(label)) return [0, n];
+  const idx = SIZE_ORDER.indexOf(label.toUpperCase());
+  if (idx !== -1) return [1, idx];
+  return [1, 100 + label.length];
+}
+
+function bySizeOrder(a: { label: string }, b: { label: string }): number {
+  const ka = sizeSortKey(a.label);
+  const kb = sizeSortKey(b.label);
+  return ka[0] - kb[0] || ka[1] - kb[1];
+}
+
 function PieSlice({ cx, cy, r, startAngle, endAngle, fill }: { cx: number; cy: number; r: number; startAngle: number; endAngle: number; fill: string }) {
   if (endAngle - startAngle >= 359.99) {
     return <circle cx={cx} cy={cy} r={r} fill={fill} />;
@@ -111,7 +130,7 @@ function PieceCharts({
     }
     const items = Array.from(bySize.entries())
       .map(([label, value], i) => ({ label, value, color: SIZE_PALETTE[i % SIZE_PALETTE.length] }))
-      .sort((a, b) => b.value - a.value);
+      .sort(bySizeOrder);
     const total = items.reduce((s, d) => s + d.value, 0);
     return items.map((d) => ({ ...d, pct: total > 0 ? Math.round((d.value / total) * 100) : 0 }));
   }, [piece]);
@@ -124,7 +143,7 @@ function PieceCharts({
     }
     const items = Array.from(bySize.entries())
       .map(([label, value], i) => ({ label, value, color: SIZE_PALETTE[i % SIZE_PALETTE.length] }))
-      .sort((a, b) => b.value - a.value);
+      .sort(bySizeOrder);
     const total = items.reduce((s, d) => s + d.value, 0);
     return items.map((d) => ({ ...d, pct: total > 0 ? Math.round((d.value / total) * 100) : 0 }));
   }, [piece]);
