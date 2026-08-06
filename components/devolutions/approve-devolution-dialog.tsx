@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, XCircle, AlertTriangle, PackageCheck, PackageX, Info, Sofa, Clock } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
@@ -58,7 +58,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
-  const getItemState = (item: DevolutionItem) => {
+  const getItemState = useCallback((item: DevolutionItem) => {
     const approved = approvals[item.id] ?? 0;
     const rejected = rejections[item.id] ?? 0;
     const maxForApproved = item.quantity - rejected;
@@ -67,7 +67,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
     const clampedRejected = Math.min(rejected, maxForRejected);
     const pending = item.quantity - clampedApproved - clampedRejected;
     return { approved: clampedApproved, rejected: clampedRejected, pending };
-  };
+  }, [approvals, rejections]);
 
   const setApprovedQty = (itemId: string, qty: number) => {
     const item = approvableItems.find((i) => i.id === itemId);
@@ -143,7 +143,7 @@ export function ApproveDevolutionDialog({ devolution, open, onClose }: ApproveDe
       repairQty += item.quantity;
     }
     return { stockQty, pendingQty, rejectedQty, discardQty, repairQty, newApprovals };
-  }, [approvableItems, autoDiscardItems, sewingItems, approvals, rejections]);
+  }, [approvableItems, autoDiscardItems, sewingItems, approvals, rejections, getItemState]);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);

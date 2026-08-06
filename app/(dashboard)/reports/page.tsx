@@ -6,7 +6,7 @@ import { PeriodSpendCard } from "@/components/reports/period-spend-card";
 import { UsageReportFilters } from "@/components/reports/usage-report-filters";
 import { UsageReportExportButtons } from "@/components/reports/usage-report-export-buttons";
 import { HygieneRepairReportExportButtons } from "@/components/reports/hygiene-repair-report-export-buttons";
-import { BarChart3, TrendingUp, Package, ClipboardList, Building2, User, Tag, ClipboardCheck, AlertTriangle, Droplets, Wrench } from "lucide-react";
+import { BarChart3, TrendingUp, Package, ClipboardList, Building2, User, Tag, ClipboardCheck, Droplets, Wrench } from "lucide-react";
 import { formatCurrency, formatNumber, formatDate, formatReason } from "@/lib/utils";
 
 export const metadata: Metadata = {

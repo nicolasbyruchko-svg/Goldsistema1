@@ -95,7 +95,7 @@ export default async function DevolutionsPage() {
             <Undo2 size={48} style={{ margin: "0 auto 12px", opacity: 0.3 }} />
             <p style={{ fontSize: "15px", fontWeight: 500, margin: 0 }}>Nenhuma devolução registrada</p>
             <p style={{ fontSize: "13px", marginTop: "4px" }}>
-              Clique em "+ Nova Devolução" para registrar devoluções por desligamento ou troca.
+              Clique em &ldquo;+ Nova Devolução&rdquo; para registrar devoluções por desligamento ou troca.
             </p>
           </div>
         ) : (

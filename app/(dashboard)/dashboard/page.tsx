@@ -46,6 +46,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default async function DashboardPage() {
+  const now = new Date();
   // Busca todos os dados do dashboard em paralelo
   const [deliveriesCount, products, recentDeliveries, spending, repairItems] =
     await Promise.all([
@@ -76,7 +77,7 @@ export default async function DashboardPage() {
     .map((item) => {
       const remaining = item.quantity - item.repairedQty;
       const startedAt = item.repairStartedAt ?? item.createdAt;
-      const days = Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 86400000));
+      const days = Math.max(0, Math.floor((now.getTime() - new Date(startedAt).getTime()) / 86400000));
       return { ...item, remaining, days };
     })
     .filter((i) => i.remaining > 0)

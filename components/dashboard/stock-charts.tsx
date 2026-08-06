@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback, useRef, useEffect } from "react";
+import { useMemo, useState, useCallback, useEffect, useSyncExternalStore } from "react";
 
 interface Variant {
   id: string;
@@ -50,13 +50,15 @@ function PieChart({ data, size = 80 }: { data: { label: string; value: number; c
   const cx = size / 2;
   const cy = size / 2;
 
-  let currentAngle = 0;
-  const slices = data.map((d) => {
-    const angle = (d.value / total) * 360;
-    const slice = { ...d, startAngle: currentAngle, endAngle: currentAngle + angle };
-    currentAngle += angle;
-    return slice;
-  });
+  const slices = data.reduce<{ label: string; value: number; color: string; startAngle: number; endAngle: number }[]>(
+    (acc, d) => {
+      const startAngle = acc.length > 0 ? acc[acc.length - 1].endAngle : 0;
+      const angle = (d.value / total) * 360;
+      acc.push({ ...d, startAngle, endAngle: startAngle + angle });
+      return acc;
+    },
+    []
+  );
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
@@ -224,37 +226,51 @@ function PieceCharts({
   );
 }
 
+function subscribeToOrderChange() {
+  return () => {};
+}
+
+let cachedStoredOrder: string[] | null = null;
+function getStoredOrder(): string[] {
+  if (cachedStoredOrder !== null) return cachedStoredOrder;
+  let order: string[] = [];
+  if (typeof window !== "undefined") {
+    try {
+      order = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") ?? [];
+    } catch {
+      order = [];
+    }
+  }
+  cachedStoredOrder = order;
+  return order;
+}
+
+function deriveOrder(pieces: Piece[], storedOrder: string[]): Piece[] {
+  const byName = new Map(pieces.map((p) => [p.name, p]));
+  const restored = storedOrder.map((name) => byName.get(name)).filter((p): p is Piece => !!p);
+  const newPieces = pieces.filter((p) => !storedOrder.includes(p.name));
+  return [...restored, ...newPieces];
+}
+
 export function StockCharts({ pieces }: { pieces: Piece[] }) {
-  const [orderedPieces, setOrderedPieces] = useState<Piece[]>([]);
+  const storedOrder = useSyncExternalStore(subscribeToOrderChange, getStoredOrder, () => []);
+  const [sessionPieces, setSessionPieces] = useState<Piece[] | null>(null);
   const [draggingName, setDraggingName] = useState<string | null>(null);
   const [overName, setOverName] = useState<string | null>(null);
-  const initialized = useRef(false);
+  const [prevPieces, setPrevPieces] = useState(pieces);
+
+  if (prevPieces !== pieces) {
+    setPrevPieces(pieces);
+    setSessionPieces(null);
+  }
+
+  const orderedPieces = useMemo(() => deriveOrder(pieces, storedOrder), [pieces, storedOrder]);
 
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
-
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const order: string[] = JSON.parse(saved);
-        const byName = new Map(pieces.map((p) => [p.name, p]));
-        const restored = order
-          .map((name) => byName.get(name))
-          .filter((p): p is Piece => !!p);
-        const newPieces = pieces.filter((p) => !order.includes(p.name));
-        setOrderedPieces([...restored, ...newPieces]);
-        return;
-      }
-    } catch {}
-    setOrderedPieces([...pieces]);
-  }, [pieces]);
-
-  useEffect(() => {
-    if (orderedPieces.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(orderedPieces.map((p) => p.name)));
+    if (sessionPieces && sessionPieces.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionPieces.map((p) => p.name)));
     }
-  }, [orderedPieces]);
+  }, [sessionPieces]);
 
   const handleDragStart = useCallback((e: React.DragEvent, name: string) => {
     setDraggingName(name);
@@ -285,8 +301,9 @@ export function StockCharts({ pieces }: { pieces: Piece[] }) {
       return;
     }
 
-    setOrderedPieces((prev) => {
-      const items = [...prev];
+    setSessionPieces((prev) => {
+      const base = prev ?? orderedPieces;
+      const items = [...base];
       const srcIdx = items.findIndex((p) => p.name === sourceName);
       const tgtIdx = items.findIndex((p) => p.name === targetName);
       if (srcIdx === -1 || tgtIdx === -1) return prev;
@@ -297,9 +314,9 @@ export function StockCharts({ pieces }: { pieces: Piece[] }) {
 
     setDraggingName(null);
     setOverName(null);
-  }, []);
+  }, [orderedPieces]);
 
-  const displayPieces = orderedPieces.length > 0 ? orderedPieces : pieces;
+  const displayPieces = sessionPieces ?? orderedPieces;
 
   return (
     <div

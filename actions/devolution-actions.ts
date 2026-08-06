@@ -99,7 +99,6 @@ export async function approveDevolution(
         if (item.condition === "GOOD") {
           const previousApproved = item.approvedQty ?? 0;
           const previousRejected = item.rejectedQty ?? 0;
-          const available = item.quantity - previousApproved - previousRejected;
 
           const newRejectedQty = Math.min(
             Math.max(requestedRejected, previousRejected),

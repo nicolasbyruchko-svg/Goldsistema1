@@ -39,10 +39,8 @@ export function PurchasesTable({ purchases }: { purchases: Purchase[] }) {
 
   const sortedPurchases = useMemo(() => {
     return [...purchases].sort((a, b) => {
-      let aVal: unknown, bVal: unknown;
-
-      aVal = a[sortConfig.key as keyof Purchase];
-      bVal = b[sortConfig.key as keyof Purchase];
+      const aVal: unknown = a[sortConfig.key as keyof Purchase];
+      const bVal: unknown = b[sortConfig.key as keyof Purchase];
 
       if (aVal == null && bVal == null) return 0;
       if (aVal == null) return 1;

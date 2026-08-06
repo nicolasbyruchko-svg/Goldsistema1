@@ -187,9 +187,8 @@ async function buildPdf(report: HygieneRepairReport): Promise<Uint8Array> {
   }
 
   if (report.repairRows.length > 0) {
-    const lastPage = doc.getPages()[doc.getPageCount() - 1];
     if (y < BOTTOM_BREAK + 60) {
-      const np = doc.addPage([PAGE_W, PAGE_H]);
+      doc.addPage([PAGE_W, PAGE_H]);
       y = PAGE_H - 50;
     }
     const currentPage = doc.getPages()[doc.getPageCount() - 1];

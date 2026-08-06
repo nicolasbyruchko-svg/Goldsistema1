@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { ChevronUp, ChevronDown, ChevronsUpDown, Building2, CheckCircle2, Clock, ClipboardCheck, Sofa } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { ApproveDevolutionDialog } from "@/components/devolutions/approve-devolution-dialog";
@@ -74,7 +73,6 @@ interface Devolution {
 }
 
 export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] }) {
-  const router = useRouter();
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "devolvedAt", direction: "desc" });
   const [approveDevolution, setApproveDevolution] = useState<Devolution | null>(null);
   const [repairItems, setRepairItems] = useState<DevolutionItem[] | null>(null);

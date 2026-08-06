@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { requireAuth } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/sidebar";
 
 export const metadata: Metadata = {
@@ -13,15 +14,17 @@ export const metadata: Metadata = {
 // em tempo real (Supabase), então devem ser renderizadas sob demanda.
 export const dynamic = "force-dynamic";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const user = await requireAuth();
+
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
       {/* Sidebar fixa */}
-      <Sidebar />
+      <Sidebar user={user} />
 
       {/* Área de conteúdo principal */}
       <main className="dashboard-main">{children}</main>
