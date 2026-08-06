@@ -64,10 +64,10 @@ export async function GET(
       nomeField.setText(delivery.worker.name || "");
     } catch {}
 
-    // 3. data: Data da entrega (DD/MM/AAAA)
+    // 3. data: Data de admissão do colaborador (DD/MM/AAAA)
     try {
       const dataField = form.getTextField("data");
-      dataField.setText(formatDate(delivery.deliveredAt));
+      dataField.setText(formatDate(delivery.worker.admissionDate));
     } catch {}
 
     // 4. itens: Lista das peças entregues (uma por linha)
