@@ -34,6 +34,7 @@ export type FichaEpiWorker = {
       product: {
         name: string;
         caNumber?: string | null;
+        size?: string | null;
       };
     }>;
   }>;
@@ -162,7 +163,9 @@ export async function generateFichaEpiPdf(worker: FichaEpiWorker): Promise<Uint8
       data: formatDatePtBr(delivery.deliveredAt),
       ca: item.product.caNumber || "-",
       qtd: String(item.quantity),
-      equipamento: item.product.name,
+      equipamento: item.product.size
+        ? `${item.product.name} (Tam ${item.product.size})`
+        : item.product.name,
     }))
   );
 
