@@ -1,6 +1,7 @@
 "use client";
 
-import { Printer, ShieldCheck, Shirt, AlertTriangle } from "lucide-react";
+import { useState } from "react";
+import { Printer, ShieldCheck, Shirt, AlertTriangle, Columns, Columns2, Columns3, Columns4 } from "lucide-react";
 import type { StockReport } from "@/actions/reports-actions";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -264,11 +265,27 @@ function groupRows(rows: StockReport["rows"]): GroupedProduct[] {
 }
 
 export function StockReportCards({ report }: { report: StockReport }) {
+  const [cols, setCols] = useState<2 | 3 | 4>(3);
   const handlePrint = () => {
     window.print();
   };
 
   const groups = groupRows(report.rows);
+
+  const colBtnStyle = (active: boolean) => ({
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "32px",
+    height: "32px",
+    borderRadius: "6px",
+    border: active ? "2px solid var(--navy-800)" : "1px solid var(--gray-200)",
+    backgroundColor: active ? "var(--navy-800)" : "#fff",
+    color: active ? "#fff" : "var(--gray-500)",
+    cursor: "pointer" as const,
+    padding: 0,
+    transition: "all 0.15s",
+  });
 
   return (
     <div>
@@ -283,7 +300,7 @@ export function StockReportCards({ report }: { report: StockReport }) {
         }
       `}</style>
 
-      <div className="no-print" style={{ marginBottom: "16px" }}>
+      <div className="no-print" style={{ marginBottom: "16px", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
         <button
           type="button"
           onClick={handlePrint}
@@ -304,6 +321,19 @@ export function StockReportCards({ report }: { report: StockReport }) {
         >
           <Printer size={16} /> Imprimir
         </button>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px", borderRadius: "8px", border: "1px solid var(--gray-200)", backgroundColor: "#fff" }}>
+          <span style={{ fontSize: "11px", color: "var(--gray-400)", fontWeight: 500, padding: "0 6px" }}>Colunas:</span>
+          <button type="button" onClick={() => setCols(2)} style={colBtnStyle(cols === 2)} title="2 colunas">
+            <Columns2 size={14} />
+          </button>
+          <button type="button" onClick={() => setCols(3)} style={colBtnStyle(cols === 3)} title="3 colunas">
+            <Columns3 size={14} />
+          </button>
+          <button type="button" onClick={() => setCols(4)} style={colBtnStyle(cols === 4)} title="4 colunas">
+            <Columns4 size={14} />
+          </button>
+        </div>
       </div>
 
       <div className="stock-report-print">
@@ -311,7 +341,7 @@ export function StockReportCards({ report }: { report: StockReport }) {
           className="stock-card-grid"
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+            gridTemplateColumns: `repeat(${cols}, 1fr)`,
             gap: "16px",
           }}
         >
