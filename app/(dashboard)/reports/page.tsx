@@ -8,7 +8,6 @@ import { UsageReportExportButtons } from "@/components/reports/usage-report-expo
 import { HygieneRepairReportExportButtons } from "@/components/reports/hygiene-repair-report-export-buttons";
 import { StockReportCards } from "@/components/reports/stock-report-cards";
 import { StockReportExportButtons } from "@/components/reports/stock-report-export-buttons";
-import { StockReportFilters } from "@/components/reports/stock-report-filters";
 import { BarChart3, TrendingUp, Package, ClipboardList, Building2, User, Tag, ClipboardCheck, Droplets, Wrench, Boxes } from "lucide-react";
 import { formatCurrency, formatNumber, formatDate, formatReason } from "@/lib/utils";
 
@@ -37,8 +36,6 @@ export default async function ReportsPage({
   const usageFromStr = typeof sp.usageFrom === "string" ? sp.usageFrom : "";
   const usageToStr = typeof sp.usageTo === "string" ? sp.usageTo : "";
 
-  const stockProductIds = toArr(sp.stockProductId);
-
   const [report, usageReport, hygieneRepairReport, stockReport] = await Promise.all([
     getSpendingReport({
       from: fromStr ? new Date(fromStr + "T00:00:00") : undefined,
@@ -52,9 +49,7 @@ export default async function ReportsPage({
       to: usageToStr ? new Date(usageToStr + "T23:59:59") : undefined,
     }),
     getHygieneRepairReport(),
-    getStockReport({
-      productIds: stockProductIds.length > 0 ? stockProductIds : undefined,
-    }),
+    getStockReport(),
   ]);
   const { totals, byProject, byWorker, byReason } = report;
 
@@ -627,13 +622,6 @@ export default async function ReportsPage({
         <p style={{ fontSize: "13px", color: "var(--gray-500)", margin: "0 0 16px 0" }}>
           Posição atual do estoque de EPIs e uniformes. Itens com estoque abaixo do mínimo são destacados.
         </p>
-
-        <StockReportFilters
-          products={stockReport.allProducts}
-          currentFilters={{
-            productIds: stockProductIds,
-          }}
-        />
 
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "12px", marginBottom: "16px" }}>

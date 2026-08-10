@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useCallback, useEffect, useSyncExternalStore } from "react";
-import { Printer } from "lucide-react";
+import { Printer, CheckSquare, Square } from "lucide-react";
 import type { StockReport } from "@/actions/reports-actions";
 
 const SIZE_PALETTE = [
@@ -103,6 +103,8 @@ function Legend({ items }: { items: { label: string; value: number; color: strin
 function PieceCard({
   piece,
   isDragging,
+  isSelected,
+  onToggleSelect,
   onDragStart,
   onDragOver,
   onDragEnd,
@@ -110,6 +112,8 @@ function PieceCard({
 }: {
   piece: Piece;
   isDragging: boolean;
+  isSelected: boolean;
+  onToggleSelect: () => void;
   onDragStart: (e: React.DragEvent, name: string) => void;
   onDragOver: (e: React.DragEvent) => void;
   onDragEnd: () => void;
@@ -123,14 +127,14 @@ function PieceCard({
       onDragEnd={onDragEnd}
       onDrop={(e) => onDrop(e, piece.name)}
       style={{
-        border: piece.hasCritical ? "1px solid #fde68a" : "1px solid var(--gray-200)",
+        border: piece.hasCritical ? "1px solid #fde68a" : isSelected ? "2px solid var(--navy-800)" : "1px solid var(--gray-200)",
         borderRadius: "12px",
         overflow: "hidden",
         backgroundColor: "#ffffff",
         cursor: "grab",
         opacity: isDragging ? 0.4 : 1,
         transform: isDragging ? "scale(0.98)" : "none",
-        transition: "opacity 0.15s, transform 0.15s",
+        transition: "opacity 0.15s, transform 0.15s, border 0.15s",
       }}
     >
       <div
@@ -144,6 +148,25 @@ function PieceCard({
           userSelect: "none",
         }}
       >
+        <span
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+          style={{
+            flexShrink: 0,
+            width: "20px",
+            height: "20px",
+            borderRadius: "5px",
+            border: isSelected ? "2px solid var(--navy-800)" : "1.5px solid var(--gray-300)",
+            backgroundColor: isSelected ? "var(--navy-800)" : "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            transition: "all 0.1s",
+          }}
+          title={isSelected ? "Desselecionar para impressão" : "Selecionar para impressão"}
+        >
+          {isSelected && <CheckSquare size={13} style={{ color: "#fff" }} strokeWidth={3} />}
+        </span>
         <span
           style={{
             flexShrink: 0,
@@ -312,10 +335,12 @@ export function StockReportCards({ report }: { report: StockReport }) {
   const [draggingName, setDraggingName] = useState<string | null>(null);
   const [overName, setOverName] = useState<string | null>(null);
   const [prevReport, setPrevReport] = useState(report);
+  const [selectedNames, setSelectedNames] = useState<Set<string>>(new Set());
 
   if (prevReport !== report) {
     setPrevReport(report);
     setSessionPieces(null);
+    setSelectedNames(new Set());
   }
 
   const allPieces = useMemo(() => buildPieces(report.rows), [report]);
@@ -373,6 +398,29 @@ export function StockReportCards({ report }: { report: StockReport }) {
 
   const displayPieces = sessionPieces ?? orderedPieces;
 
+  const toggleSelect = useCallback((name: string) => {
+    setSelectedNames((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) {
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
+  }, []);
+
+  const allSelected = displayPieces.length > 0 && displayPieces.every((p) => selectedNames.has(p.name));
+  const noneSelected = selectedNames.size === 0;
+
+  const toggleSelectAll = useCallback(() => {
+    if (allSelected) {
+      setSelectedNames(new Set());
+    } else {
+      setSelectedNames(new Set(displayPieces.map((p) => p.name)));
+    }
+  }, [allSelected, displayPieces]);
+
   const handlePrint = () => {
     window.print();
   };
@@ -387,13 +435,36 @@ export function StockReportCards({ report }: { report: StockReport }) {
           .no-print { display: none !important; }
           .stock-card-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 10px !important; }
           .stock-card-grid > div { break-inside: avoid; }
+          .stock-card-unselected { display: none !important; }
         }
       `}</style>
 
-      <div className="no-print" style={{ marginBottom: "16px" }}>
+      <div className="no-print" style={{ marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+        <button
+          type="button"
+          onClick={toggleSelectAll}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "9px 14px",
+            borderRadius: "10px",
+            fontSize: "13px",
+            fontWeight: 600,
+            border: "1px solid var(--gray-200)",
+            backgroundColor: "#fff",
+            color: "var(--navy-900)",
+            cursor: "pointer",
+            boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+          }}
+        >
+          {allSelected ? <CheckSquare size={15} /> : <Square size={15} />}
+          {allSelected ? "Limpar seleção" : "Selecionar todas"}
+        </button>
         <button
           type="button"
           onClick={handlePrint}
+          disabled={noneSelected}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -403,13 +474,13 @@ export function StockReportCards({ report }: { report: StockReport }) {
             fontSize: "14px",
             fontWeight: 600,
             border: "1px solid var(--gray-200)",
-            backgroundColor: "#fff",
-            color: "var(--navy-900)",
-            cursor: "pointer",
+            backgroundColor: noneSelected ? "var(--gray-100)" : "#fff",
+            color: noneSelected ? "var(--gray-400)" : "var(--navy-900)",
+            cursor: noneSelected ? "not-allowed" : "pointer",
             boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
           }}
         >
-          <Printer size={16} /> Imprimir
+          <Printer size={16} /> Imprimir{!noneSelected ? ` (${selectedNames.size})` : ""}
         </button>
       </div>
 
@@ -422,27 +493,33 @@ export function StockReportCards({ report }: { report: StockReport }) {
             gap: "16px",
           }}
         >
-          {displayPieces.map((piece) => (
-            <div
-              key={piece.name}
-              onDragEnter={() => handleDragEnter(piece.name)}
-              style={{
-                outline: overName === piece.name && draggingName !== piece.name ? "2px dashed #0284c7" : "none",
-                outlineOffset: "2px",
-                borderRadius: "14px",
-                transition: "outline 0.15s",
-              }}
-            >
-              <PieceCard
-                piece={piece}
-                isDragging={draggingName === piece.name}
-                onDragStart={handleDragStart}
-                onDragOver={handleDragOver}
-                onDragEnd={handleDragEnd}
-                onDrop={handleDrop}
-              />
-            </div>
-          ))}
+          {displayPieces.map((piece) => {
+            const isSelected = selectedNames.has(piece.name);
+            return (
+              <div
+                key={piece.name}
+                onDragEnter={() => handleDragEnter(piece.name)}
+                className={noneSelected ? "" : isSelected ? "" : "stock-card-unselected"}
+                style={{
+                  outline: overName === piece.name && draggingName !== piece.name ? "2px dashed #0284c7" : "none",
+                  outlineOffset: "2px",
+                  borderRadius: "14px",
+                  transition: "outline 0.15s",
+                }}
+              >
+                <PieceCard
+                  piece={piece}
+                  isDragging={draggingName === piece.name}
+                  isSelected={isSelected}
+                  onToggleSelect={() => toggleSelect(piece.name)}
+                  onDragStart={handleDragStart}
+                  onDragOver={handleDragOver}
+                  onDragEnd={handleDragEnd}
+                  onDrop={handleDrop}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
