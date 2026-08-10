@@ -430,10 +430,10 @@ export function StockReportCards({ report }: { report: StockReport }) {
         @media print {
           body * { visibility: hidden !important; }
           .stock-report-print, .stock-report-print * { visibility: visible !important; }
-          .stock-report-print { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; }
+          .stock-report-print { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; zoom: 1.15; }
           .no-print { display: none !important; }
-          .stock-card-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 10px !important; }
-          .stock-card-grid > div { break-inside: avoid; transform: scale(1.15); transform-origin: top left; }
+          .stock-card-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 14px !important; }
+          .stock-card-grid > div { break-inside: avoid; }
           .stock-card-unselected { display: none !important; }
         }
       `}</style>
