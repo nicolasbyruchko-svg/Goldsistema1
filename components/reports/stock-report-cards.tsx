@@ -93,7 +93,6 @@ function Legend({ items }: { items: { label: string; value: number; color: strin
           <span style={{ width: "8px", height: "8px", borderRadius: "2px", backgroundColor: item.color, flexShrink: 0 }} />
           <span style={{ color: "var(--gray-600)", flex: 1 }}>{item.label}</span>
           <span style={{ fontWeight: 700, color: "var(--gray-800)" }}>{item.value}</span>
-          <span style={{ color: "var(--gray-400)", fontSize: "10px" }}>({item.pct}%)</span>
         </div>
       ))}
     </div>
@@ -434,7 +433,7 @@ export function StockReportCards({ report }: { report: StockReport }) {
           .stock-report-print { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; }
           .no-print { display: none !important; }
           .stock-card-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 10px !important; }
-          .stock-card-grid > div { break-inside: avoid; }
+          .stock-card-grid > div { break-inside: avoid; transform: scale(1.15); transform-origin: top left; }
           .stock-card-unselected { display: none !important; }
         }
       `}</style>
