@@ -437,6 +437,9 @@ export type StockReportRow = {
 
 export type StockReport = {
   generatedAt: Date;
+  filters: {
+    productIds?: string[];
+  };
   totals: {
     totalProducts: number;
     totalItems: number;
@@ -448,13 +451,23 @@ export type StockReport = {
     criticalCount: number;
   };
   rows: StockReportRow[];
+  allProducts: { id: string; name: string; size: string | null }[];
 };
 
-export async function getStockReport(): Promise<StockReport> {
+export type StockReportFilters = {
+  productIds?: string[];
+};
+
+export async function getStockReport(filters?: StockReportFilters): Promise<StockReport> {
   const now = new Date();
 
+  const where: Record<string, unknown> = { archived: false };
+  if (filters?.productIds && filters.productIds.length > 0) {
+    where.id = { in: filters.productIds };
+  }
+
   const products = await prisma.product.findMany({
-    where: { archived: false },
+    where,
     orderBy: [{ type: "asc" }, { name: "asc" }],
   });
 
@@ -487,9 +500,17 @@ export async function getStockReport(): Promise<StockReport> {
   const totalHigienizado = rows.filter((r) => r.condition === "HIGIENIZADO").reduce((s, r) => s + r.stockQuantity, 0);
   const criticalCount = rows.filter((r) => r.isCritical).length;
 
+  const allProducts = await prisma.product.findMany({
+    where: { archived: false },
+    select: { id: true, name: true, size: true },
+    orderBy: { name: "asc" },
+  });
+
   return {
     generatedAt: now,
+    filters: { productIds: filters?.productIds },
     totals: { totalProducts, totalItems, totalValue, totalEpi, totalUniform, totalNovo, totalHigienizado, criticalCount },
     rows,
+    allProducts,
   };
 }

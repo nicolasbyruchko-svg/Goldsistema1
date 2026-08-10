@@ -163,11 +163,12 @@ export function StockReportCards({ report }: { report: StockReport }) {
     <div>
       <style>{`
         @media print {
-          body * { visibility: hidden; }
-          .stock-report-print area, .stock-report-print area * { visibility: visible; }
-          .stock-report-print { position: absolute; left: 0; top: 0; width: 100%; }
+          body * { visibility: hidden !important; }
+          .stock-report-print, .stock-report-print * { visibility: visible !important; }
+          .stock-report-print { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; }
           .no-print { display: none !important; }
-          .stock-card-grid { grid-template-columns: repeat(3, 1fr) !important; }
+          .stock-card-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 10px !important; }
+          .stock-card-grid > div { break-inside: avoid; }
         }
       `}</style>
 
