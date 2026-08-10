@@ -34,7 +34,7 @@ function buildCsv(report: UsageReport): string {
   lines.push(`Registros: ${report.totals.totalRows}  |  Itens: ${report.totals.totalItems}  |  Gasto: ${formatCurrency(report.totals.totalSpent)}`);
   lines.push("");
 
-  lines.push(["Data", "Colaborador", "Contrato", "Peça", "Tam.", "Qtd", "Custo Unit.", "Total", "Motivo"].map(csvCell).join(";"));
+  lines.push(["Data", "Colaborador", "Contrato", "Peça", "Tam.", "Condição", "Qtd", "Custo Unit.", "Total", "Motivo"].map(csvCell).join(";"));
   for (const row of report.rows) {
     lines.push([
       new Date(row.date).toLocaleDateString("pt-BR"),
@@ -42,6 +42,7 @@ function buildCsv(report: UsageReport): string {
       row.projectName,
       row.productName,
       row.productSize || "Único",
+      row.productCondition === "NOVO" ? "Novo" : "Higienizado",
       row.quantity,
       row.unitCost.toFixed(2),
       row.total.toFixed(2),
@@ -63,14 +64,15 @@ function downloadBlob(content: BlobPart, filename: string, mime: string) {
 
 const COLS = [
   { label: "DATA", x: MARGIN },
-  { label: "COLABORADOR", x: MARGIN + 70 },
-  { label: "CONTRATO", x: MARGIN + 190 },
-  { label: "PEÇA", x: MARGIN + 310 },
-  { label: "TAM.", x: MARGIN + 430 },
-  { label: "QTD", x: MARGIN + 470 },
-  { label: "CUSTO UNIT.", x: MARGIN + 510 },
-  { label: "TOTAL", x: MARGIN + 590 },
-  { label: "MOTIVO", x: MARGIN + 650 },
+  { label: "COLABORADOR", x: MARGIN + 60 },
+  { label: "CONTRATO", x: MARGIN + 170 },
+  { label: "PEÇA", x: MARGIN + 290 },
+  { label: "TAM.", x: MARGIN + 400 },
+  { label: "COND.", x: MARGIN + 440 },
+  { label: "QTD", x: MARGIN + 490 },
+  { label: "CUSTO UNIT.", x: MARGIN + 530 },
+  { label: "TOTAL", x: MARGIN + 610 },
+  { label: "MOTIVO", x: MARGIN + 680 },
 ];
 
 function drawTableHead(page: PDFPage, font: PDFFont, y: number): number {
@@ -88,14 +90,15 @@ function trunc(text: string, max: number): string {
 
 function drawRow(page: PDFPage, font: PDFFont, row: UsageReport["rows"][number], y: number): number {
   page.drawText(new Date(row.date).toLocaleDateString("pt-BR"), { x: COLS[0].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
-  page.drawText(trunc(row.workerName, 20), { x: COLS[1].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
-  page.drawText(trunc(row.projectName, 20), { x: COLS[2].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
-  page.drawText(trunc(row.productName, 20), { x: COLS[3].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
+  page.drawText(trunc(row.workerName, 18), { x: COLS[1].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
+  page.drawText(trunc(row.projectName, 18), { x: COLS[2].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
+  page.drawText(trunc(row.productName, 18), { x: COLS[3].x, y, size: 8, font, color: rgb(0.15, 0.15, 0.15) });
   page.drawText(row.productSize || "Único", { x: COLS[4].x, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) });
-  page.drawText(String(row.quantity), { x: COLS[5].x, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) });
-  page.drawText(formatCurrency(row.unitCost), { x: COLS[6].x, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) });
-  page.drawText(formatCurrency(row.total), { x: COLS[7].x, y, size: 8, font, color: rgb(0.05, 0.4, 0.25) });
-  page.drawText(trunc(formatReason(row.reason), 12), { x: COLS[8].x, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) });
+  page.drawText(trunc(row.productCondition === "NOVO" ? "Novo" : "Hig.", 6), { x: COLS[5].x, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) });
+  page.drawText(String(row.quantity), { x: COLS[6].x, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) });
+  page.drawText(formatCurrency(row.unitCost), { x: COLS[7].x, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) });
+  page.drawText(formatCurrency(row.total), { x: COLS[8].x, y, size: 8, font, color: rgb(0.05, 0.4, 0.25) });
+  page.drawText(trunc(formatReason(row.reason), 12), { x: COLS[9].x, y, size: 8, font, color: rgb(0.3, 0.3, 0.3) });
   return y - ROW_H;
 }
 
@@ -105,8 +108,8 @@ function drawTotals(page: PDFPage, font: PDFFont, boldFont: PDFFont, report: Usa
   y -= 14;
 
   page.drawText("TOTAL", { x: COLS[0].x, y, size: 9, font: boldFont, color: rgb(0.1, 0.2, 0.4) });
-  page.drawText(String(report.totals.totalItems), { x: COLS[5].x, y, size: 9, font: boldFont, color: rgb(0.1, 0.2, 0.4) });
-  page.drawText(formatCurrency(report.totals.totalSpent), { x: COLS[7].x, y, size: 9, font: boldFont, color: rgb(0.05, 0.4, 0.25) });
+  page.drawText(String(report.totals.totalItems), { x: COLS[6].x, y, size: 9, font: boldFont, color: rgb(0.1, 0.2, 0.4) });
+  page.drawText(formatCurrency(report.totals.totalSpent), { x: COLS[8].x, y, size: 9, font: boldFont, color: rgb(0.05, 0.4, 0.25) });
 
   return y - ROW_H;
 }

@@ -18,7 +18,7 @@ interface Delivery {
   createdBy: { id: string; name: string; username: string } | null;
   worker: { name: string; matricula: string };
   project: { name: string } | null;
-  items: { id: string; quantity: number; product: { name: string } }[];
+  items: { id: string; quantity: number; product: { name: string; condition: string } }[];
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -144,8 +144,11 @@ export function DeliveriesTable({ deliveries }: { deliveries: Delivery[] }) {
               <td style={{ padding: "14px 24px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                   {delivery.items.slice(0, 2).map((item) => (
-                    <span key={item.id} style={{ fontSize: "12px", color: "var(--gray-600)" }}>
+                    <span key={item.id} style={{ fontSize: "12px", color: "var(--gray-600)", display: "inline-flex", alignItems: "center", gap: "4px", flexWrap: "wrap" }}>
                       {item.quantity}× {item.product.name}
+                      <span style={{ fontSize: "10px", fontWeight: 600, padding: "1px 6px", borderRadius: "999px", backgroundColor: item.product.condition === "NOVO" ? "#d1fae5" : "#e0e7ff", color: item.product.condition === "NOVO" ? "#059669" : "#4338ca" }}>
+                        {item.product.condition === "NOVO" ? "Novo" : "Hig."}
+                      </span>
                     </span>
                   ))}
                   {delivery.items.length > 2 && (

@@ -268,7 +268,7 @@ export default async function ReportsPage({
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
                 <thead>
                   <tr style={{ backgroundColor: "var(--gray-50)", borderBottom: "1px solid var(--gray-200)" }}>
-                    {["Data", "Colaborador", "Contrato", "Peça", "Tamanho", "Qtd", "Custo Unit.", "Total", "Motivo"].map((col) => (
+                    {["Data", "Colaborador", "Contrato", "Peça", "Tamanho", "Condição", "Qtd", "Custo Unit.", "Total", "Motivo"].map((col) => (
                       <th
                         key={col}
                         style={{
@@ -317,6 +317,22 @@ export default async function ReportsPage({
                           }}
                         >
                           {row.productSize || "Único"}
+                        </span>
+                      </td>
+                      <td style={{ padding: "12px 20px" }}>
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            padding: "2px 8px",
+                            borderRadius: "999px",
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            backgroundColor: row.productCondition === "NOVO" ? "#d1fae5" : "#e0e7ff",
+                            color: row.productCondition === "NOVO" ? "#059669" : "#4338ca",
+                          }}
+                        >
+                          {row.productCondition === "NOVO" ? "Novo" : "Higienizado"}
                         </span>
                       </td>
                       <td style={{ padding: "12px 20px", textAlign: "right", fontWeight: 600, color: "var(--gray-700)" }}>

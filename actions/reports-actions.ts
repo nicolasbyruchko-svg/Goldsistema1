@@ -46,6 +46,7 @@ export type UsageReportRow = {
   projectName: string;
   productName: string;
   productSize: string | null;
+  productCondition: string;
   quantity: number;
   unitCost: number;
   total: number;
@@ -127,7 +128,7 @@ export async function getUsageReport(filters?: UsageReportFilters): Promise<Usag
       ...whereItems,
     },
     include: {
-      product: { select: { id: true, name: true, size: true } },
+      product: { select: { id: true, name: true, size: true, condition: true } },
       delivery: {
         select: {
           deliveredAt: true,
@@ -153,6 +154,7 @@ export async function getUsageReport(filters?: UsageReportFilters): Promise<Usag
       projectName: item.delivery.project?.name ?? "Sem contrato",
       productName: item.product.name,
       productSize: size,
+      productCondition: item.product.condition,
       quantity: item.quantity,
       unitCost,
       total: unitCost * item.quantity,
