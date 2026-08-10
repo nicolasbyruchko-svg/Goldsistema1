@@ -4,9 +4,26 @@ import { Printer, ShieldCheck, Shirt, AlertTriangle } from "lucide-react";
 import type { StockReport } from "@/actions/reports-actions";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
-function StockCard({ row }: { row: StockReport["rows"][number] }) {
-  const isEpi = row.type === "EPI";
-  const isCritical = row.isCritical;
+type GroupedProduct = {
+  key: string;
+  name: string;
+  sku: string;
+  type: string;
+  size: string | null;
+  caNumber: string | null;
+  caValidity: Date | null;
+  unitCost: number;
+  supplier: string | null;
+  minStock: number;
+  novo: { stockQuantity: number; totalValue: number };
+  higienizado: { stockQuantity: number; totalValue: number };
+};
+
+function StockCard({ group }: { group: GroupedProduct }) {
+  const isEpi = group.type === "EPI";
+  const totalQty = group.novo.stockQuantity + group.higienizado.stockQuantity;
+  const totalValue = group.novo.totalValue + group.higienizado.totalValue;
+  const isCritical = totalQty <= group.minStock;
 
   return (
     <div
@@ -18,6 +35,7 @@ function StockCard({ row }: { row: StockReport["rows"][number] }) {
         breakInside: "avoid",
       }}
     >
+      {/* Header */}
       <div
         style={{
           padding: "14px 16px",
@@ -57,7 +75,7 @@ function StockCard({ row }: { row: StockReport["rows"][number] }) {
               whiteSpace: "nowrap",
             }}
           >
-            {row.name}
+            {group.name}
           </span>
         </div>
         <span
@@ -69,67 +87,94 @@ function StockCard({ row }: { row: StockReport["rows"][number] }) {
             lineHeight: 1,
           }}
         >
-          {row.stockQuantity}
+          {totalQty}
         </span>
       </div>
 
+      {/* Body */}
       <div style={{ padding: "12px 16px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "12px" }}>
-          <div>
-            <span style={{ color: "var(--gray-400)", display: "block", marginBottom: "1px" }}>Condição</span>
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                padding: "1px 6px",
-                borderRadius: "999px",
-                fontSize: "11px",
-                fontWeight: 600,
-                backgroundColor: row.condition === "NOVO" ? "#d1fae5" : "#e0e7ff",
-                color: row.condition === "NOVO" ? "#059669" : "#4338ca",
-              }}
-            >
-              {row.condition === "NOVO" ? "Novo" : "Higienizado"}
+        {/* Novo / Higienizado side by side */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "12px" }}>
+          <div
+            style={{
+              padding: "10px 12px",
+              borderRadius: "8px",
+              backgroundColor: "#f0fdf4",
+              border: "1px solid #bbf7d0",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+              <span style={{ fontSize: "11px", fontWeight: 600, color: "#059669" }}>Novo</span>
+              <span style={{ fontSize: "18px", fontWeight: 800, color: "#15803d", lineHeight: 1 }}>
+                {group.novo.stockQuantity}
+              </span>
+            </div>
+            <span style={{ fontSize: "11px", color: "#059669", opacity: 0.8 }}>
+              {group.novo.totalValue > 0 ? formatCurrency(group.novo.totalValue) : "—"}
             </span>
           </div>
+
+          <div
+            style={{
+              padding: "10px 12px",
+              borderRadius: "8px",
+              backgroundColor: "#eef2ff",
+              border: "1px solid #c7d2fe",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+              <span style={{ fontSize: "11px", fontWeight: 600, color: "#4338ca" }}>Higienizado</span>
+              <span style={{ fontSize: "18px", fontWeight: 800, color: "#4338ca", lineHeight: 1 }}>
+                {group.higienizado.stockQuantity}
+              </span>
+            </div>
+            <span style={{ fontSize: "11px", color: "#4338ca", opacity: 0.8 }}>
+              {group.higienizado.totalValue > 0 ? formatCurrency(group.higienizado.totalValue) : "—"}
+            </span>
+          </div>
+        </div>
+
+        {/* Details grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "12px" }}>
           <div>
             <span style={{ color: "var(--gray-400)", display: "block", marginBottom: "1px" }}>Tamanho</span>
             <span style={{ fontFamily: "monospace", fontWeight: 600, color: "var(--gray-700)" }}>
-              {row.size || "Único"}
+              {group.size || "Único"}
             </span>
           </div>
           <div>
             <span style={{ color: "var(--gray-400)", display: "block", marginBottom: "1px" }}>Custo Unit.</span>
             <span style={{ fontWeight: 600, color: "var(--gray-700)" }}>
-              {row.unitCost > 0 ? formatCurrency(row.unitCost) : "—"}
+              {group.unitCost > 0 ? formatCurrency(group.unitCost) : "—"}
             </span>
           </div>
           <div>
             <span style={{ color: "var(--gray-400)", display: "block", marginBottom: "1px" }}>Valor Total</span>
             <span style={{ fontWeight: 700, color: "#059669" }}>
-              {row.totalValue > 0 ? formatCurrency(row.totalValue) : "—"}
+              {totalValue > 0 ? formatCurrency(totalValue) : "—"}
             </span>
           </div>
-          {row.caNumber && (
-            <div style={{ gridColumn: "1 / -1" }}>
+          {group.caNumber && (
+            <div>
               <span style={{ color: "var(--gray-400)", display: "block", marginBottom: "1px" }}>CA</span>
               <span style={{ fontFamily: "monospace", fontSize: "11px", color: "var(--gray-600)" }}>
-                {row.caNumber}
-                {row.caValidity && (
-                  <span style={{ marginLeft: "6px", color: new Date(row.caValidity) < new Date() ? "#dc2626" : "var(--gray-400)" }}>
-                    (val: {formatDate(row.caValidity)})
+                {group.caNumber}
+                {group.caValidity && (
+                  <span style={{ marginLeft: "4px", color: new Date(group.caValidity) < new Date() ? "#dc2626" : "var(--gray-400)" }}>
+                    (val: {formatDate(group.caValidity)})
                   </span>
                 )}
               </span>
             </div>
           )}
-          {row.supplier && (
+          {group.supplier && (
             <div style={{ gridColumn: "1 / -1" }}>
               <span style={{ color: "var(--gray-400)", display: "block", marginBottom: "1px" }}>Fornecedor</span>
-              <span style={{ fontSize: "11px", color: "var(--gray-600)" }}>{row.supplier}</span>
+              <span style={{ fontSize: "11px", color: "var(--gray-600)" }}>{group.supplier}</span>
             </div>
           )}
         </div>
+
         {isCritical && (
           <div
             style={{
@@ -146,7 +191,7 @@ function StockCard({ row }: { row: StockReport["rows"][number] }) {
             }}
           >
             <AlertTriangle size={12} />
-            Estoque crítico (mín: {row.minStock})
+            Estoque crítico (mín: {group.minStock})
           </div>
         )}
       </div>
@@ -154,10 +199,49 @@ function StockCard({ row }: { row: StockReport["rows"][number] }) {
   );
 }
 
+function groupRows(rows: StockReport["rows"]): GroupedProduct[] {
+  const map = new Map<string, GroupedProduct>();
+
+  for (const row of rows) {
+    const key = `${row.sku}|${row.size ?? ""}`;
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        name: row.name,
+        sku: row.sku,
+        type: row.type,
+        size: row.size,
+        caNumber: row.caNumber,
+        caValidity: row.caValidity,
+        unitCost: row.unitCost,
+        supplier: row.supplier,
+        minStock: row.minStock,
+        novo: { stockQuantity: 0, totalValue: 0 },
+        higienizado: { stockQuantity: 0, totalValue: 0 },
+      });
+    }
+    const group = map.get(key)!;
+    if (row.condition === "NOVO") {
+      group.novo.stockQuantity += row.stockQuantity;
+      group.novo.totalValue += row.totalValue;
+    } else {
+      group.higienizado.stockQuantity += row.stockQuantity;
+      group.higienizado.totalValue += row.totalValue;
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => {
+    if (a.type !== b.type) return a.type === "EPI" ? -1 : 1;
+    return a.name.localeCompare(b.name, "pt-BR");
+  });
+}
+
 export function StockReportCards({ report }: { report: StockReport }) {
   const handlePrint = () => {
     window.print();
   };
+
+  const groups = groupRows(report.rows);
 
   return (
     <div>
@@ -200,12 +284,12 @@ export function StockReportCards({ report }: { report: StockReport }) {
           className="stock-card-grid"
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
             gap: "16px",
           }}
         >
-          {report.rows.map((row) => (
-            <StockCard key={row.id} row={row} />
+          {groups.map((group) => (
+            <StockCard key={group.key} group={group} />
           ))}
         </div>
       </div>
