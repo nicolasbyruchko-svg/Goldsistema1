@@ -4,25 +4,54 @@ import { Printer, ShieldCheck, Shirt, AlertTriangle } from "lucide-react";
 import type { StockReport } from "@/actions/reports-actions";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
+type SizeEntry = { size: string | null; qty: number; value: number };
+
 type GroupedProduct = {
   key: string;
   name: string;
-  sku: string;
   type: string;
-  size: string | null;
   caNumber: string | null;
   caValidity: Date | null;
-  unitCost: number;
   supplier: string | null;
   minStock: number;
-  novo: { stockQuantity: number; totalValue: number };
-  higienizado: { stockQuantity: number; totalValue: number };
+  novo: SizeEntry[];
+  higienizado: SizeEntry[];
+  novoTotal: number;
+  higienizadoTotal: number;
 };
+
+function SizeGrid({ entries, color }: { entries: SizeEntry[]; color: string }) {
+  if (entries.length === 0) {
+    return <span style={{ fontSize: "11px", color: "var(--gray-300)" }}>—</span>;
+  }
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+      {entries.map((e) => (
+        <span
+          key={e.size ?? "__"}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "3px",
+            padding: "2px 7px",
+            borderRadius: "6px",
+            fontSize: "11px",
+            fontWeight: 600,
+            fontFamily: "monospace",
+            backgroundColor: color === "green" ? "#dcfce7" : "#e0e7ff",
+            color: color === "green" ? "#15803d" : "#4338ca",
+          }}
+        >
+          {e.size || "Único"}: {e.qty}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 function StockCard({ group }: { group: GroupedProduct }) {
   const isEpi = group.type === "EPI";
-  const totalQty = group.novo.stockQuantity + group.higienizado.stockQuantity;
-  const totalValue = group.novo.totalValue + group.higienizado.totalValue;
+  const totalQty = group.novoTotal + group.higienizadoTotal;
   const isCritical = totalQty <= group.minStock;
 
   return (
@@ -93,8 +122,8 @@ function StockCard({ group }: { group: GroupedProduct }) {
 
       {/* Body */}
       <div style={{ padding: "12px 16px" }}>
-        {/* Novo / Higienizado side by side */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "12px" }}>
+        {/* Novo / Higienizado grids side by side */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "12px" }}>
           <div
             style={{
               padding: "10px 12px",
@@ -103,15 +132,13 @@ function StockCard({ group }: { group: GroupedProduct }) {
               border: "1px solid #bbf7d0",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
               <span style={{ fontSize: "11px", fontWeight: 600, color: "#059669" }}>Novo</span>
-              <span style={{ fontSize: "18px", fontWeight: 800, color: "#15803d", lineHeight: 1 }}>
-                {group.novo.stockQuantity}
+              <span style={{ fontSize: "16px", fontWeight: 800, color: "#15803d", lineHeight: 1 }}>
+                {group.novoTotal}
               </span>
             </div>
-            <span style={{ fontSize: "11px", color: "#059669", opacity: 0.8 }}>
-              {group.novo.totalValue > 0 ? formatCurrency(group.novo.totalValue) : "—"}
-            </span>
+            <SizeGrid entries={group.novo} color="green" />
           </div>
 
           <div
@@ -122,56 +149,30 @@ function StockCard({ group }: { group: GroupedProduct }) {
               border: "1px solid #c7d2fe",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
               <span style={{ fontSize: "11px", fontWeight: 600, color: "#4338ca" }}>Higienizado</span>
-              <span style={{ fontSize: "18px", fontWeight: 800, color: "#4338ca", lineHeight: 1 }}>
-                {group.higienizado.stockQuantity}
+              <span style={{ fontSize: "16px", fontWeight: 800, color: "#4338ca", lineHeight: 1 }}>
+                {group.higienizadoTotal}
               </span>
             </div>
-            <span style={{ fontSize: "11px", color: "#4338ca", opacity: 0.8 }}>
-              {group.higienizado.totalValue > 0 ? formatCurrency(group.higienizado.totalValue) : "—"}
-            </span>
+            <SizeGrid entries={group.higienizado} color="blue" />
           </div>
         </div>
 
-        {/* Details grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "12px" }}>
-          <div>
-            <span style={{ color: "var(--gray-400)", display: "block", marginBottom: "1px" }}>Tamanho</span>
-            <span style={{ fontFamily: "monospace", fontWeight: 600, color: "var(--gray-700)" }}>
-              {group.size || "Único"}
-            </span>
-          </div>
-          <div>
-            <span style={{ color: "var(--gray-400)", display: "block", marginBottom: "1px" }}>Custo Unit.</span>
-            <span style={{ fontWeight: 600, color: "var(--gray-700)" }}>
-              {group.unitCost > 0 ? formatCurrency(group.unitCost) : "—"}
-            </span>
-          </div>
-          <div>
-            <span style={{ color: "var(--gray-400)", display: "block", marginBottom: "1px" }}>Valor Total</span>
-            <span style={{ fontWeight: 700, color: "#059669" }}>
-              {totalValue > 0 ? formatCurrency(totalValue) : "—"}
-            </span>
-          </div>
+        {/* Details */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", fontSize: "11px", color: "var(--gray-500)" }}>
           {group.caNumber && (
-            <div>
-              <span style={{ color: "var(--gray-400)", display: "block", marginBottom: "1px" }}>CA</span>
-              <span style={{ fontFamily: "monospace", fontSize: "11px", color: "var(--gray-600)" }}>
-                {group.caNumber}
-                {group.caValidity && (
-                  <span style={{ marginLeft: "4px", color: new Date(group.caValidity) < new Date() ? "#dc2626" : "var(--gray-400)" }}>
-                    (val: {formatDate(group.caValidity)})
-                  </span>
-                )}
-              </span>
-            </div>
+            <span>
+              CA: <span style={{ fontFamily: "monospace", color: "var(--gray-600)" }}>{group.caNumber}</span>
+              {group.caValidity && (
+                <span style={{ marginLeft: "4px", color: new Date(group.caValidity) < new Date() ? "#dc2626" : "var(--gray-400)" }}>
+                  (val: {formatDate(group.caValidity)})
+                </span>
+              )}
+            </span>
           )}
           {group.supplier && (
-            <div style={{ gridColumn: "1 / -1" }}>
-              <span style={{ color: "var(--gray-400)", display: "block", marginBottom: "1px" }}>Fornecedor</span>
-              <span style={{ fontSize: "11px", color: "var(--gray-600)" }}>{group.supplier}</span>
-            </div>
+            <span>Forn.: <span style={{ color: "var(--gray-600)" }}>{group.supplier}</span></span>
           )}
         </div>
 
@@ -203,37 +204,48 @@ function groupRows(rows: StockReport["rows"]): GroupedProduct[] {
   const map = new Map<string, GroupedProduct>();
 
   for (const row of rows) {
-    const key = `${row.sku}|${row.size ?? ""}`;
+    const key = `${row.name}|${row.type}`;
     if (!map.has(key)) {
       map.set(key, {
         key,
         name: row.name,
-        sku: row.sku,
         type: row.type,
-        size: row.size,
         caNumber: row.caNumber,
         caValidity: row.caValidity,
-        unitCost: row.unitCost,
         supplier: row.supplier,
         minStock: row.minStock,
-        novo: { stockQuantity: 0, totalValue: 0 },
-        higienizado: { stockQuantity: 0, totalValue: 0 },
+        novo: [],
+        higienizado: [],
+        novoTotal: 0,
+        higienizadoTotal: 0,
       });
     }
     const group = map.get(key)!;
+
+    const sizeEntry: SizeEntry = { size: row.size, qty: row.stockQuantity, value: row.totalValue };
+
     if (row.condition === "NOVO") {
-      group.novo.stockQuantity += row.stockQuantity;
-      group.novo.totalValue += row.totalValue;
+      group.novo.push(sizeEntry);
+      group.novoTotal += row.stockQuantity;
     } else {
-      group.higienizado.stockQuantity += row.stockQuantity;
-      group.higienizado.totalValue += row.totalValue;
+      group.higienizado.push(sizeEntry);
+      group.higienizadoTotal += row.stockQuantity;
     }
   }
 
-  return Array.from(map.values()).sort((a, b) => {
+  const groups = Array.from(map.values());
+
+  for (const g of groups) {
+    g.novo.sort((a, b) => (a.size ?? "").localeCompare(b.size ?? ""));
+    g.higienizado.sort((a, b) => (a.size ?? "").localeCompare(b.size ?? ""));
+  }
+
+  groups.sort((a, b) => {
     if (a.type !== b.type) return a.type === "EPI" ? -1 : 1;
     return a.name.localeCompare(b.name, "pt-BR");
   });
+
+  return groups;
 }
 
 export function StockReportCards({ report }: { report: StockReport }) {
@@ -251,7 +263,7 @@ export function StockReportCards({ report }: { report: StockReport }) {
           .stock-report-print, .stock-report-print * { visibility: visible !important; }
           .stock-report-print { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; }
           .no-print { display: none !important; }
-          .stock-card-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 10px !important; }
+          .stock-card-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
           .stock-card-grid > div { break-inside: avoid; }
         }
       `}</style>
@@ -284,7 +296,7 @@ export function StockReportCards({ report }: { report: StockReport }) {
           className="stock-card-grid"
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
             gap: "16px",
           }}
         >
