@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useCallback, useEffect, useSyncExternalStore } from "react";
+import { getSizeColor } from "@/lib/size-colors";
 
 interface Variant {
   id: string;
@@ -19,11 +20,6 @@ interface Piece {
   higienizadoCount: number;
   hasCritical: boolean;
 }
-
-const SIZE_PALETTE = [
-  "#059669", "#0284c7", "#8b5cf6", "#f59e0b", "#ef4444",
-  "#06b6d4", "#84cc16", "#f97316", "#ec4899", "#6366f1",
-];
 
 const STORAGE_KEY = "stock-charts-order";
 
@@ -128,7 +124,7 @@ function PieceCharts({
       bySize.set(key, (bySize.get(key) || 0) + v.stockQuantity);
     }
     const items = Array.from(bySize.entries())
-      .map(([label, value], i) => ({ label, value, color: SIZE_PALETTE[i % SIZE_PALETTE.length] }))
+      .map(([label, value]) => ({ label, value, color: getSizeColor(label) }))
       .sort(bySizeOrder);
     const total = items.reduce((s, d) => s + d.value, 0);
     return items.map((d) => ({ ...d, pct: total > 0 ? Math.round((d.value / total) * 100) : 0 }));
@@ -141,7 +137,7 @@ function PieceCharts({
       bySize.set(key, (bySize.get(key) || 0) + v.stockQuantity);
     }
     const items = Array.from(bySize.entries())
-      .map(([label, value], i) => ({ label, value, color: SIZE_PALETTE[i % SIZE_PALETTE.length] }))
+      .map(([label, value]) => ({ label, value, color: getSizeColor(label) }))
       .sort(bySizeOrder);
     const total = items.reduce((s, d) => s + d.value, 0);
     return items.map((d) => ({ ...d, pct: total > 0 ? Math.round((d.value / total) * 100) : 0 }));

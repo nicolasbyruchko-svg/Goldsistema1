@@ -3,11 +3,7 @@
 import { useMemo, useState, useCallback, useEffect, useSyncExternalStore } from "react";
 import { Printer, CheckSquare, Square } from "lucide-react";
 import type { StockReport } from "@/actions/reports-actions";
-
-const SIZE_PALETTE = [
-  "#059669", "#0284c7", "#8b5cf6", "#f59e0b", "#ef4444",
-  "#06b6d4", "#84cc16", "#f97316", "#ec4899", "#6366f1",
-];
+import { getSizeColor } from "@/lib/size-colors";
 
 const STORAGE_KEY = "stock-report-order";
 
@@ -279,7 +275,7 @@ function buildPieces(rows: StockReport["rows"]): Piece[] {
 
     piece.novoSizeData = (() => {
       const items = Array.from(novoBySize.entries())
-        .map(([label, value], i) => ({ label, value, color: SIZE_PALETTE[i % SIZE_PALETTE.length] }))
+        .map(([label, value]) => ({ label, value, color: getSizeColor(label) }))
         .sort(bySizeOrder);
       const total = items.reduce((s, d) => s + d.value, 0);
       return items.map((d) => ({ ...d, pct: total > 0 ? Math.round((d.value / total) * 100) : 0 }));
@@ -287,7 +283,7 @@ function buildPieces(rows: StockReport["rows"]): Piece[] {
 
     piece.higSizeData = (() => {
       const items = Array.from(higBySize.entries())
-        .map(([label, value], i) => ({ label, value, color: SIZE_PALETTE[i % SIZE_PALETTE.length] }))
+        .map(([label, value]) => ({ label, value, color: getSizeColor(label) }))
         .sort(bySizeOrder);
       const total = items.reduce((s, d) => s + d.value, 0);
       return items.map((d) => ({ ...d, pct: total > 0 ? Math.round((d.value / total) * 100) : 0 }));
