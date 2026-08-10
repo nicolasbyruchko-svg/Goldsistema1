@@ -1,297 +1,283 @@
 "use client";
 
 import { useMemo, useState, useCallback, useEffect, useSyncExternalStore } from "react";
-import { Printer, ShieldCheck, Shirt, AlertTriangle } from "lucide-react";
+import { Printer } from "lucide-react";
 import type { StockReport } from "@/actions/reports-actions";
-import { formatCurrency, formatDate } from "@/lib/utils";
+
+const SIZE_PALETTE = [
+  "#059669", "#0284c7", "#8b5cf6", "#f59e0b", "#ef4444",
+  "#06b6d4", "#84cc16", "#f97316", "#ec4899", "#6366f1",
+];
 
 const STORAGE_KEY = "stock-report-order";
 
-const SIZE_ORDER = [
-  "XXS", "XS", "PP", "P", "M", "G", "GG", "XGG", "EXG",
-  "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48",
-];
+const SIZE_ORDER = ["PP", "P", "M", "G", "GG", "XG", "XGG", "XXG", "2G", "3G"];
 
-function sizeSortKey(s: string | null): number {
-  if (!s) return 999;
-  const upper = s.toUpperCase().trim();
-  const idx = SIZE_ORDER.indexOf(upper);
-  if (idx >= 0) return idx;
-  const num = Number(upper);
-  if (!isNaN(num)) return 1000 + num;
-  return 2000;
+function sizeSortKey(label: string): [number, number] {
+  if (label === "Único") return [2, 0];
+  const n = Number(label.replace(",", "."));
+  if (!Number.isNaN(n) && /^[\d.,]+$/.test(label)) return [0, n];
+  const idx = SIZE_ORDER.indexOf(label.toUpperCase());
+  if (idx !== -1) return [1, idx];
+  return [1, 100 + label.length];
 }
 
-type SizeEntry = { size: string | null; qty: number; value: number };
+function bySizeOrder(a: { label: string }, b: { label: string }): number {
+  const ka = sizeSortKey(a.label);
+  const kb = sizeSortKey(b.label);
+  return ka[0] - kb[0] || ka[1] - kb[1];
+}
 
-type GroupedProduct = {
-  key: string;
+interface Piece {
   name: string;
   type: string;
-  caNumber: string | null;
-  caValidity: Date | null;
-  supplier: string | null;
-  minStock: number;
-  novo: SizeEntry[];
-  higienizado: SizeEntry[];
-  novoTotal: number;
-  higienizadoTotal: number;
-};
+  total: number;
+  novoCount: number;
+  higienizadoCount: number;
+  hasCritical: boolean;
+  novoSizeData: { label: string; value: number; color: string; pct: number }[];
+  higSizeData: { label: string; value: number; color: string; pct: number }[];
+}
 
-function SizeGrid({ entries, color }: { entries: SizeEntry[]; color: string }) {
-  if (entries.length === 0) {
-    return <span style={{ fontSize: "11px", color: "var(--gray-300)" }}>—</span>;
+function PieSlice({ cx, cy, r, startAngle, endAngle, fill }: { cx: number; cy: number; r: number; startAngle: number; endAngle: number; fill: string }) {
+  if (endAngle - startAngle >= 359.99) {
+    return <circle cx={cx} cy={cy} r={r} fill={fill} />;
   }
+  const startRad = ((startAngle - 90) * Math.PI) / 180;
+  const endRad = ((endAngle - 90) * Math.PI) / 180;
+  const x1 = cx + r * Math.cos(startRad);
+  const y1 = cy + r * Math.sin(startRad);
+  const x2 = cx + r * Math.cos(endRad);
+  const y2 = cy + r * Math.sin(endRad);
+  const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+  const d = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+  return <path d={d} fill={fill} />;
+}
+
+function PieChart({ data, size = 80 }: { data: { label: string; value: number; color: string }[]; size?: number }) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  if (total === 0) return null;
+
+  const r = size / 2 - 2;
+  const cx = size / 2;
+  const cy = size / 2;
+
+  const slices = data.reduce<{ label: string; value: number; color: string; startAngle: number; endAngle: number }[]>(
+    (acc, d) => {
+      const startAngle = acc.length > 0 ? acc[acc.length - 1].endAngle : 0;
+      const angle = (d.value / total) * 360;
+      acc.push({ ...d, startAngle, endAngle: startAngle + angle });
+      return acc;
+    },
+    []
+  );
+
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-      {entries.map((e) => (
-        <span
-          key={e.size ?? "__"}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "3px",
-            padding: "2px 7px",
-            borderRadius: "6px",
-            fontSize: "11px",
-            fontWeight: 600,
-            fontFamily: "monospace",
-            backgroundColor: color === "green" ? "#dcfce7" : "#e0e7ff",
-            color: color === "green" ? "#15803d" : "#4338ca",
-          }}
-        >
-          {e.size || "Único"}: {e.qty}
-        </span>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      {slices.map((s, i) => (
+        <PieSlice key={i} cx={cx} cy={cy} r={r} startAngle={s.startAngle} endAngle={s.endAngle} fill={s.color} />
+      ))}
+      <circle cx={cx} cy={cy} r={r * 0.45} fill="white" />
+      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fontSize={r * 0.38} fontWeight={800} fill="var(--navy-900)">
+        {total}
+      </text>
+    </svg>
+  );
+}
+
+function Legend({ items }: { items: { label: string; value: number; color: string; pct: number }[] }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+      {items.map((item) => (
+        <div key={item.label} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px" }}>
+          <span style={{ width: "8px", height: "8px", borderRadius: "2px", backgroundColor: item.color, flexShrink: 0 }} />
+          <span style={{ color: "var(--gray-600)", flex: 1 }}>{item.label}</span>
+          <span style={{ fontWeight: 700, color: "var(--gray-800)" }}>{item.value}</span>
+          <span style={{ color: "var(--gray-400)", fontSize: "10px" }}>({item.pct}%)</span>
+        </div>
       ))}
     </div>
   );
 }
 
-function StockCard({
-  group,
+function PieceCard({
+  piece,
   isDragging,
   onDragStart,
   onDragOver,
   onDragEnd,
   onDrop,
 }: {
-  group: GroupedProduct;
+  piece: Piece;
   isDragging: boolean;
-  onDragStart: (e: React.DragEvent, key: string) => void;
+  onDragStart: (e: React.DragEvent, name: string) => void;
   onDragOver: (e: React.DragEvent) => void;
   onDragEnd: () => void;
-  onDrop: (e: React.DragEvent, key: string) => void;
+  onDrop: (e: React.DragEvent, name: string) => void;
 }) {
-  const isEpi = group.type === "EPI";
-  const totalQty = group.novoTotal + group.higienizadoTotal;
-  const isCritical = totalQty <= group.minStock;
-
   return (
     <div
       draggable
-      onDragStart={(e) => onDragStart(e, group.key)}
+      onDragStart={(e) => onDragStart(e, piece.name)}
       onDragOver={onDragOver}
       onDragEnd={onDragEnd}
-      onDrop={(e) => onDrop(e, group.key)}
+      onDrop={(e) => onDrop(e, piece.name)}
       style={{
-        backgroundColor: "#fff",
+        border: piece.hasCritical ? "1px solid #fde68a" : "1px solid var(--gray-200)",
         borderRadius: "12px",
-        border: isCritical ? "1px solid #fde68a" : "1px solid var(--gray-200)",
         overflow: "hidden",
-        breakInside: "avoid",
+        backgroundColor: "#ffffff",
         cursor: "grab",
         opacity: isDragging ? 0.4 : 1,
         transform: isDragging ? "scale(0.98)" : "none",
         transition: "opacity 0.15s, transform 0.15s",
       }}
     >
-      {/* Header */}
       <div
         style={{
-          padding: "14px 16px",
+          padding: "12px 14px",
           borderBottom: "1px solid var(--gray-100)",
-          backgroundColor: isCritical ? "#fffbeb" : "var(--gray-50)",
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
           gap: "8px",
+          backgroundColor: piece.hasCritical ? "#fffbeb" : "var(--gray-50)",
           userSelect: "none",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
-          <span
-            style={{
-              flexShrink: 0,
-              fontSize: "14px",
-              color: "var(--gray-300)",
-              cursor: "grab",
-            }}
-            title="Arrastar para reordenar"
-          >
-            ⠿
-          </span>
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              padding: "2px 8px",
-              borderRadius: "999px",
-              fontSize: "10px",
-              fontWeight: 700,
-              letterSpacing: "0.5px",
-              backgroundColor: isEpi ? "rgba(25,55,109,0.08)" : "#e0f2fe",
-              color: isEpi ? "var(--navy-800)" : "#0284c7",
-              flexShrink: 0,
-            }}
-          >
-            {isEpi ? <ShieldCheck size={10} style={{ marginRight: "3px" }} /> : <Shirt size={10} style={{ marginRight: "3px" }} />}
-            {isEpi ? "EPI" : "UNIFORME"}
-          </span>
-          <span
-            style={{
-              fontSize: "13px",
-              fontWeight: 700,
-              color: "var(--gray-900)",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {group.name}
-          </span>
-        </div>
         <span
           style={{
-            fontSize: "20px",
-            fontWeight: 800,
-            color: isCritical ? "#dc2626" : "#15803d",
             flexShrink: 0,
-            lineHeight: 1,
+            fontSize: "14px",
+            color: "var(--gray-300)",
+            cursor: "grab",
+          }}
+          title="Arrastar para reordenar"
+        >
+          ⠿
+        </span>
+        <span
+          style={{
+            flexShrink: 0,
+            padding: "2px 8px",
+            borderRadius: "999px",
+            fontSize: "11px",
+            fontWeight: 600,
+            backgroundColor: piece.type === "EPI" ? "rgba(25,55,109,0.08)" : "#e0f2fe",
+            color: piece.type === "EPI" ? "var(--navy-800)" : "#0284c7",
           }}
         >
-          {totalQty}
+          {piece.type === "EPI" ? "EPI" : "Uniforme"}
         </span>
+        <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--gray-900)", margin: 0, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {piece.name}
+        </p>
+        <span style={{ fontSize: "15px", fontWeight: 800, color: "var(--navy-900)" }}>{piece.total}</span>
       </div>
 
-      {/* Body */}
-      <div style={{ padding: "12px 16px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "12px" }}>
-          <div
-            style={{
-              padding: "10px 12px",
-              borderRadius: "8px",
-              backgroundColor: "#f0fdf4",
-              border: "1px solid #bbf7d0",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-              <span style={{ fontSize: "11px", fontWeight: 600, color: "#059669" }}>Novo</span>
-              <span style={{ fontSize: "16px", fontWeight: 800, color: "#15803d", lineHeight: 1 }}>
-                {group.novoTotal}
-              </span>
-            </div>
-            <SizeGrid entries={group.novo} color="green" />
-          </div>
-
-          <div
-            style={{
-              padding: "10px 12px",
-              borderRadius: "8px",
-              backgroundColor: "#eef2ff",
-              border: "1px solid #c7d2fe",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-              <span style={{ fontSize: "11px", fontWeight: 600, color: "#4338ca" }}>Higienizado</span>
-              <span style={{ fontSize: "16px", fontWeight: 800, color: "#4338ca", lineHeight: 1 }}>
-                {group.higienizadoTotal}
-              </span>
-            </div>
-            <SizeGrid entries={group.higienizado} color="blue" />
-          </div>
-        </div>
-
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", fontSize: "11px", color: "var(--gray-500)" }}>
-          {group.caNumber && (
-            <span>
-              CA: <span style={{ fontFamily: "monospace", color: "var(--gray-600)" }}>{group.caNumber}</span>
-              {group.caValidity && (
-                <span style={{ marginLeft: "4px", color: new Date(group.caValidity) < new Date() ? "#dc2626" : "var(--gray-400)" }}>
-                  (val: {formatDate(group.caValidity)})
-                </span>
-              )}
+      <div style={{ padding: "14px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ width: "8px", height: "8px", borderRadius: "2px", backgroundColor: "#059669" }} />
+            <span style={{ fontSize: "11px", fontWeight: 700, color: "#059669", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              Novos ({piece.novoCount})
             </span>
-          )}
-          {group.supplier && (
-            <span>Forn.: <span style={{ color: "var(--gray-600)" }}>{group.supplier}</span></span>
+          </div>
+          {piece.novoSizeData.length === 0 ? (
+            <span style={{ fontSize: "11px", color: "var(--gray-400)", padding: "20px 0" }}>Sem itens novos</span>
+          ) : (
+            <>
+              <PieChart data={piece.novoSizeData} size={90} />
+              <Legend items={piece.novoSizeData} />
+            </>
           )}
         </div>
-
-        {isCritical && (
-          <div
-            style={{
-              marginTop: "10px",
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-              padding: "4px 8px",
-              borderRadius: "6px",
-              backgroundColor: "#fef3c7",
-              fontSize: "11px",
-              fontWeight: 600,
-              color: "#92400e",
-            }}
-          >
-            <AlertTriangle size={12} />
-            Estoque crítico (mín: {group.minStock})
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ width: "8px", height: "8px", borderRadius: "2px", backgroundColor: "#0284c7" }} />
+            <span style={{ fontSize: "11px", fontWeight: 700, color: "#0284c7", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              Higienizados ({piece.higienizadoCount})
+            </span>
           </div>
-        )}
+          {piece.higSizeData.length === 0 ? (
+            <span style={{ fontSize: "11px", color: "var(--gray-400)", padding: "20px 0" }}>Sem itens higienizados</span>
+          ) : (
+            <>
+              <PieChart data={piece.higSizeData} size={90} />
+              <Legend items={piece.higSizeData} />
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function groupRows(rows: StockReport["rows"]): GroupedProduct[] {
-  const map = new Map<string, GroupedProduct>();
+function buildPieces(rows: StockReport["rows"]): Piece[] {
+  const map = new Map<string, Piece>();
 
   for (const row of rows) {
-    const key = `${row.name}|${row.type}`;
+    const key = row.name;
     if (!map.has(key)) {
       map.set(key, {
-        key,
         name: row.name,
         type: row.type,
-        caNumber: row.caNumber,
-        caValidity: row.caValidity,
-        supplier: row.supplier,
-        minStock: row.minStock,
-        novo: [],
-        higienizado: [],
-        novoTotal: 0,
-        higienizadoTotal: 0,
+        total: 0,
+        novoCount: 0,
+        higienizadoCount: 0,
+        hasCritical: false,
+        novoSizeData: [],
+        higSizeData: [],
       });
     }
-    const group = map.get(key)!;
-    const sizeEntry: SizeEntry = { size: row.size, qty: row.stockQuantity, value: row.totalValue };
+    const piece = map.get(key)!;
+    piece.total += row.stockQuantity;
+    if (row.stockQuantity <= row.minStock) piece.hasCritical = true;
+
     if (row.condition === "NOVO") {
-      group.novo.push(sizeEntry);
-      group.novoTotal += row.stockQuantity;
+      piece.novoCount += row.stockQuantity;
     } else {
-      group.higienizado.push(sizeEntry);
-      group.higienizadoTotal += row.stockQuantity;
+      piece.higienizadoCount += row.stockQuantity;
     }
   }
 
-  const groups = Array.from(map.values());
-  for (const g of groups) {
-    g.novo.sort((a, b) => sizeSortKey(a.size) - sizeSortKey(b.size));
-    g.higienizado.sort((a, b) => sizeSortKey(a.size) - sizeSortKey(b.size));
+  const pieces = Array.from(map.values());
+
+  for (const piece of pieces) {
+    const novoBySize = new Map<string, number>();
+    const higBySize = new Map<string, number>();
+
+    for (const row of rows.filter((r) => r.name === piece.name)) {
+      const sizeLabel = row.size || "Único";
+      if (row.condition === "NOVO") {
+        novoBySize.set(sizeLabel, (novoBySize.get(sizeLabel) || 0) + row.stockQuantity);
+      } else {
+        higBySize.set(sizeLabel, (higBySize.get(sizeLabel) || 0) + row.stockQuantity);
+      }
+    }
+
+    piece.novoSizeData = (() => {
+      const items = Array.from(novoBySize.entries())
+        .map(([label, value], i) => ({ label, value, color: SIZE_PALETTE[i % SIZE_PALETTE.length] }))
+        .sort(bySizeOrder);
+      const total = items.reduce((s, d) => s + d.value, 0);
+      return items.map((d) => ({ ...d, pct: total > 0 ? Math.round((d.value / total) * 100) : 0 }));
+    })();
+
+    piece.higSizeData = (() => {
+      const items = Array.from(higBySize.entries())
+        .map(([label, value], i) => ({ label, value, color: SIZE_PALETTE[i % SIZE_PALETTE.length] }))
+        .sort(bySizeOrder);
+      const total = items.reduce((s, d) => s + d.value, 0);
+      return items.map((d) => ({ ...d, pct: total > 0 ? Math.round((d.value / total) * 100) : 0 }));
+    })();
   }
-  groups.sort((a, b) => {
+
+  pieces.sort((a, b) => {
     if (a.type !== b.type) return a.type === "EPI" ? -1 : 1;
     return a.name.localeCompare(b.name, "pt-BR");
   });
-  return groups;
+
+  return pieces;
 }
 
 function subscribeToOrderChange() {
@@ -313,38 +299,38 @@ function getStoredOrder(): string[] {
   return order;
 }
 
-function deriveOrder(groups: GroupedProduct[], storedOrder: string[]): GroupedProduct[] {
-  const byKey = new Map(groups.map((g) => [g.key, g]));
-  const restored = storedOrder.map((key) => byKey.get(key)).filter((g): g is GroupedProduct => !!g);
-  const newGroups = groups.filter((g) => !storedOrder.includes(g.key));
-  return [...restored, ...newGroups];
+function deriveOrder(pieces: Piece[], storedOrder: string[]): Piece[] {
+  const byName = new Map(pieces.map((p) => [p.name, p]));
+  const restored = storedOrder.map((name) => byName.get(name)).filter((p): p is Piece => !!p);
+  const newPieces = pieces.filter((p) => !storedOrder.includes(p.name));
+  return [...restored, ...newPieces];
 }
 
 export function StockReportCards({ report }: { report: StockReport }) {
   const storedOrder = useSyncExternalStore(subscribeToOrderChange, getStoredOrder, () => []);
-  const [sessionGroups, setSessionGroups] = useState<GroupedProduct[] | null>(null);
-  const [draggingKey, setDraggingKey] = useState<string | null>(null);
-  const [overKey, setOverKey] = useState<string | null>(null);
+  const [sessionPieces, setSessionPieces] = useState<Piece[] | null>(null);
+  const [draggingName, setDraggingName] = useState<string | null>(null);
+  const [overName, setOverName] = useState<string | null>(null);
   const [prevReport, setPrevReport] = useState(report);
 
   if (prevReport !== report) {
     setPrevReport(report);
-    setSessionGroups(null);
+    setSessionPieces(null);
   }
 
-  const allGroups = useMemo(() => groupRows(report.rows), [report]);
-  const orderedGroups = useMemo(() => deriveOrder(allGroups, storedOrder), [allGroups, storedOrder]);
+  const allPieces = useMemo(() => buildPieces(report.rows), [report]);
+  const orderedPieces = useMemo(() => deriveOrder(allPieces, storedOrder), [allPieces, storedOrder]);
 
   useEffect(() => {
-    if (sessionGroups && sessionGroups.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionGroups.map((g) => g.key)));
+    if (sessionPieces && sessionPieces.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionPieces.map((p) => p.name)));
     }
-  }, [sessionGroups]);
+  }, [sessionPieces]);
 
-  const handleDragStart = useCallback((e: React.DragEvent, key: string) => {
-    setDraggingKey(key);
+  const handleDragStart = useCallback((e: React.DragEvent, name: string) => {
+    setDraggingName(name);
     e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", key);
+    e.dataTransfer.setData("text/plain", name);
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -352,40 +338,40 @@ export function StockReportCards({ report }: { report: StockReport }) {
     e.dataTransfer.dropEffect = "move";
   }, []);
 
-  const handleDragEnter = useCallback((key: string) => {
-    setOverKey(key);
+  const handleDragEnter = useCallback((name: string) => {
+    setOverName(name);
   }, []);
 
   const handleDragEnd = useCallback(() => {
-    setDraggingKey(null);
-    setOverKey(null);
+    setDraggingName(null);
+    setOverName(null);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent, targetKey: string) => {
+  const handleDrop = useCallback((e: React.DragEvent, targetName: string) => {
     e.preventDefault();
-    const sourceKey = e.dataTransfer.getData("text/plain");
-    if (!sourceKey || sourceKey === targetKey) {
-      setDraggingKey(null);
-      setOverKey(null);
+    const sourceName = e.dataTransfer.getData("text/plain");
+    if (!sourceName || sourceName === targetName) {
+      setDraggingName(null);
+      setOverName(null);
       return;
     }
 
-    setSessionGroups((prev) => {
-      const base = prev ?? orderedGroups;
+    setSessionPieces((prev) => {
+      const base = prev ?? orderedPieces;
       const items = [...base];
-      const srcIdx = items.findIndex((g) => g.key === sourceKey);
-      const tgtIdx = items.findIndex((g) => g.key === targetKey);
+      const srcIdx = items.findIndex((p) => p.name === sourceName);
+      const tgtIdx = items.findIndex((p) => p.name === targetName);
       if (srcIdx === -1 || tgtIdx === -1) return prev;
       const [moved] = items.splice(srcIdx, 1);
       items.splice(tgtIdx, 0, moved);
       return items;
     });
 
-    setDraggingKey(null);
-    setOverKey(null);
-  }, [orderedGroups]);
+    setDraggingName(null);
+    setOverName(null);
+  }, [orderedPieces]);
 
-  const displayGroups = sessionGroups ?? orderedGroups;
+  const displayPieces = sessionPieces ?? orderedPieces;
 
   const handlePrint = () => {
     window.print();
@@ -436,20 +422,20 @@ export function StockReportCards({ report }: { report: StockReport }) {
             gap: "16px",
           }}
         >
-          {displayGroups.map((group) => (
+          {displayPieces.map((piece) => (
             <div
-              key={group.key}
-              onDragEnter={() => handleDragEnter(group.key)}
+              key={piece.name}
+              onDragEnter={() => handleDragEnter(piece.name)}
               style={{
-                outline: overKey === group.key && draggingKey !== group.key ? "2px dashed #0284c7" : "none",
+                outline: overName === piece.name && draggingName !== piece.name ? "2px dashed #0284c7" : "none",
                 outlineOffset: "2px",
                 borderRadius: "14px",
                 transition: "outline 0.15s",
               }}
             >
-              <StockCard
-                group={group}
-                isDragging={draggingKey === group.key}
+              <PieceCard
+                piece={piece}
+                isDragging={draggingName === piece.name}
                 onDragStart={handleDragStart}
                 onDragOver={handleDragOver}
                 onDragEnd={handleDragEnd}
