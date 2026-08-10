@@ -8,6 +8,7 @@ import { UsageReportExportButtons } from "@/components/reports/usage-report-expo
 import { HygieneRepairReportExportButtons } from "@/components/reports/hygiene-repair-report-export-buttons";
 import { StockReportCards } from "@/components/reports/stock-report-cards";
 import { StockReportExportButtons } from "@/components/reports/stock-report-export-buttons";
+import { ReportSection } from "@/components/reports/report-section";
 import { BarChart3, TrendingUp, Package, ClipboardList, Building2, User, Tag, ClipboardCheck, Droplets, Wrench, Boxes } from "lucide-react";
 import { formatCurrency, formatNumber, formatDate, formatReason } from "@/lib/utils";
 
@@ -160,62 +161,65 @@ export default async function ReportsPage({
               <BarChart3 size={20} style={{ color: "#7c3aed" }} strokeWidth={2} />
             </div>
             <h1 style={{ fontSize: "26px", fontWeight: 700, color: "var(--navy-900)", letterSpacing: "-0.5px", margin: 0 }}>
-              Relatórios de Gasto
+              Relatórios
             </h1>
           </div>
           <p style={{ fontSize: "14px", color: "var(--gray-500)", margin: 0 }}>
-            Custo apurado pelo valor unitário registrado em cada entrega. Entregas canceladas não entram no gasto.
+            Clique em um relatório para expandir os detalhes.
           </p>
         </div>
-        <ReportExportButtons report={report} />
       </div>
 
-      {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "28px" }}>
-        <PeriodSpendCard
-          value={formatCurrency(totals.periodSpent)}
-          itemsSub={`${formatNumber(totals.periodItems)} item(s) entregues`}
-          from={fromStr}
-          to={toStr}
-        />
-        {cards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <div key={card.label} style={{ backgroundColor: "#fff", borderRadius: "12px", padding: "20px 24px", boxShadow: "0 1px 3px rgba(0,0,0,0.07)", border: "1px solid var(--gray-200)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-                <div style={{ width: "32px", height: "32px", borderRadius: "8px", backgroundColor: card.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Icon size={16} style={{ color: card.color }} />
+      {/* Relatório de Gasto */}
+      <ReportSection
+        title="Relatório de Gasto"
+        icon={<BarChart3 size={18} style={{ color: "#7c3aed" }} />}
+        iconBg="#ede9fe"
+        iconColor="#7c3aed"
+        summary={`${formatCurrency(totals.totalSpent)} gastos · ${formatNumber(totals.totalItems)} itens · ${formatNumber(totals.totalDeliveries)} entregas`}
+        action={<ReportExportButtons report={report} />}
+        defaultOpen
+      >
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginTop: "16px" }}>
+          <PeriodSpendCard
+            value={formatCurrency(totals.periodSpent)}
+            itemsSub={`${formatNumber(totals.periodItems)} item(s) entregues`}
+            from={fromStr}
+            to={toStr}
+          />
+          {cards.map((card) => {
+            const Icon = card.icon;
+            return (
+              <div key={card.label} style={{ backgroundColor: "#fff", borderRadius: "12px", padding: "20px 24px", boxShadow: "0 1px 3px rgba(0,0,0,0.07)", border: "1px solid var(--gray-200)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+                  <div style={{ width: "32px", height: "32px", borderRadius: "8px", backgroundColor: card.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Icon size={16} style={{ color: card.color }} />
+                  </div>
+                  <span style={{ fontSize: "13px", color: "var(--gray-500)", fontWeight: 500 }}>{card.label}</span>
                 </div>
-                <span style={{ fontSize: "13px", color: "var(--gray-500)", fontWeight: 500 }}>{card.label}</span>
+                <span style={{ display: "block", fontSize: "26px", fontWeight: 800, color: card.color, lineHeight: 1.1 }}>{card.value}</span>
+                <span style={{ display: "block", fontSize: "12px", color: "var(--gray-400)", marginTop: "2px" }}>{card.sub}</span>
               </div>
-              <span style={{ display: "block", fontSize: "26px", fontWeight: 800, color: card.color, lineHeight: 1.1 }}>{card.value}</span>
-              <span style={{ display: "block", fontSize: "12px", color: "var(--gray-400)", marginTop: "2px" }}>{card.sub}</span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Tabelas */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: "20px", alignItems: "start" }}>
-        {renderTable("Por Contrato", <Building2 size={16} style={{ color: "#0284c7" }} />, byProject, "Nenhuma entrega registrada ainda.")}
-        {renderTable("Por Colaborador", <User size={16} style={{ color: "var(--navy-800)" }} />, byWorker, "Nenhuma entrega registrada ainda.")}
-        {renderTable("Por Motivo", <Tag size={16} style={{ color: "#d97706" }} />, byReason, "Nenhuma entrega registrada ainda.")}
-      </div>
-
-      {/* Relatório de Uso */}
-      <div style={{ marginTop: "32px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", marginBottom: "16px", flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ width: "36px", height: "36px", borderRadius: "9px", backgroundColor: "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <ClipboardCheck size={18} style={{ color: "#d97706" }} />
-            </div>
-            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "var(--navy-900)", margin: 0 }}>
-              Relatório de Uso
-            </h2>
-          </div>
-          <UsageReportExportButtons report={usageReport} />
+            );
+          })}
         </div>
 
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: "20px", alignItems: "start", marginTop: "20px" }}>
+          {renderTable("Por Contrato", <Building2 size={16} style={{ color: "#0284c7" }} />, byProject, "Nenhuma entrega registrada ainda.")}
+          {renderTable("Por Colaborador", <User size={16} style={{ color: "var(--navy-800)" }} />, byWorker, "Nenhuma entrega registrada ainda.")}
+          {renderTable("Por Motivo", <Tag size={16} style={{ color: "#d97706" }} />, byReason, "Nenhuma entrega registrada ainda.")}
+        </div>
+      </ReportSection>
+
+      {/* Relatório de Uso */}
+      <ReportSection
+        title="Relatório de Uso"
+        icon={<ClipboardCheck size={18} style={{ color: "#d97706" }} />}
+        iconBg="#fef3c7"
+        iconColor="#d97706"
+        summary={`${formatNumber(usageReport.totals.totalRows)} registros · ${formatCurrency(usageReport.totals.totalSpent)} gastos`}
+        action={<UsageReportExportButtons report={usageReport} />}
+      >
         <UsageReportFilters
           products={usageReport.products}
           sizes={usageReport.sizes}
@@ -229,7 +233,6 @@ export default async function ReportsPage({
           }}
         />
 
-        {/* Stats do Relatório de Uso */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px", marginTop: "16px" }}>
           <div style={{ backgroundColor: "#fff", borderRadius: "10px", padding: "16px 20px", boxShadow: "0 1px 3px rgba(0,0,0,0.07)", border: "1px solid var(--gray-200)" }}>
             <span style={{ fontSize: "12px", color: "var(--gray-500)", fontWeight: 500 }}>Registros</span>
@@ -251,7 +254,6 @@ export default async function ReportsPage({
           </div>
         </div>
 
-        {/* Tabela de Uso */}
         <div
           style={{
             backgroundColor: "#fff",
@@ -370,27 +372,21 @@ export default async function ReportsPage({
             </div>
           )}
         </div>
-      </div>
+      </ReportSection>
 
       {/* Relatório de Higienização e Reparo */}
-      <div style={{ marginTop: "32px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", marginBottom: "16px", flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ width: "36px", height: "36px", borderRadius: "9px", backgroundColor: "#e0e7ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Droplets size={18} style={{ color: "#4338ca" }} />
-            </div>
-            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "var(--navy-900)", margin: 0 }}>
-              Higienização e Reparo
-            </h2>
-          </div>
-          <HygieneRepairReportExportButtons report={hygieneRepairReport} />
-        </div>
-
+      <ReportSection
+        title="Higienização e Reparo"
+        icon={<Droplets size={18} style={{ color: "#4338ca" }} />}
+        iconBg="#e0e7ff"
+        iconColor="#4338ca"
+        summary={`${formatNumber(hygieneRepairReport.totals.totalItems)} pendentes · ${formatNumber(hygieneRepairReport.totals.totalHygiene)} higienização · ${formatNumber(hygieneRepairReport.totals.totalRepair)} reparo`}
+        action={<HygieneRepairReportExportButtons report={hygieneRepairReport} />}
+      >
         <p style={{ fontSize: "13px", color: "var(--gray-500)", margin: "0 0 16px 0" }}>
           Itens devolvidos aguardando triagem (higienização) e itens em processo de reparo (costura).
         </p>
 
-        {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px", marginBottom: "16px" }}>
           <div style={{ backgroundColor: "#fff", borderRadius: "10px", padding: "16px 20px", boxShadow: "0 1px 3px rgba(0,0,0,0.07)", border: "1px solid var(--gray-200)" }}>
             <span style={{ fontSize: "12px", color: "var(--gray-500)", fontWeight: 500 }}>Total Pendente</span>
@@ -418,7 +414,6 @@ export default async function ReportsPage({
           </div>
         </div>
 
-        {/* Tabela Higienização */}
         {hygieneRepairReport.hygieneRows.length > 0 && (
           <div
             style={{
@@ -510,7 +505,6 @@ export default async function ReportsPage({
           </div>
         )}
 
-        {/* Tabela Reparo */}
         {hygieneRepairReport.repairRows.length > 0 && (
           <div
             style={{
@@ -603,27 +597,21 @@ export default async function ReportsPage({
             Nenhum item em higienização ou reparo no momento.
           </div>
         )}
-      </div>
+      </ReportSection>
 
       {/* Relatório de Estoque */}
-      <div style={{ marginTop: "32px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", marginBottom: "16px", flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ width: "36px", height: "36px", borderRadius: "9px", backgroundColor: "#d1fae5", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Boxes size={18} style={{ color: "#059669" }} />
-            </div>
-            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "var(--navy-900)", margin: 0 }}>
-              Relatório de Estoque
-            </h2>
-          </div>
-          <StockReportExportButtons report={stockReport} />
-        </div>
-
+      <ReportSection
+        title="Relatório de Estoque"
+        icon={<Boxes size={18} style={{ color: "#059669" }} />}
+        iconBg="#d1fae5"
+        iconColor="#059669"
+        summary={`${formatNumber(stockReport.totals.totalProducts)} produtos · ${formatNumber(stockReport.totals.totalItems)} itens · ${formatCurrency(stockReport.totals.totalValue)}`}
+        action={<StockReportExportButtons report={stockReport} />}
+      >
         <p style={{ fontSize: "13px", color: "var(--gray-500)", margin: "0 0 16px 0" }}>
           Posição atual do estoque de EPIs e uniformes. Itens com estoque abaixo do mínimo são destacados.
         </p>
 
-        {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "12px", marginBottom: "16px" }}>
           {[
             { label: "Produtos", value: formatNumber(stockReport.totals.totalProducts), color: "var(--navy-900)", bg: "#fff" },
@@ -644,7 +632,6 @@ export default async function ReportsPage({
           ))}
         </div>
 
-        {/* Cards de Estoque */}
         {stockReport.rows.length === 0 ? (
           <div style={{ backgroundColor: "#fff", borderRadius: "14px", boxShadow: "0 1px 3px rgba(0,0,0,0.07)", border: "1px solid var(--gray-200)", padding: "40px 24px", textAlign: "center", color: "var(--gray-400)", fontSize: "13px" }}>
             Nenhum produto cadastrado no estoque.
@@ -652,7 +639,7 @@ export default async function ReportsPage({
         ) : (
           <StockReportCards report={stockReport} />
         )}
-      </div>
+      </ReportSection>
     </div>
   );
 }
