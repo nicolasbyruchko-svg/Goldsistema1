@@ -4,6 +4,21 @@ import { Printer, ShieldCheck, Shirt, AlertTriangle } from "lucide-react";
 import type { StockReport } from "@/actions/reports-actions";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
+const SIZE_ORDER = [
+  "XXS", "XS", "PP", "P", "M", "G", "GG", "XGG", "EXG",
+  "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48",
+];
+
+function sizeSortKey(s: string | null): number {
+  if (!s) return 999;
+  const upper = s.toUpperCase().trim();
+  const idx = SIZE_ORDER.indexOf(upper);
+  if (idx >= 0) return idx;
+  const num = Number(upper);
+  if (!isNaN(num)) return 1000 + num;
+  return 2000;
+}
+
 type SizeEntry = { size: string | null; qty: number; value: number };
 
 type GroupedProduct = {
@@ -236,8 +251,8 @@ function groupRows(rows: StockReport["rows"]): GroupedProduct[] {
   const groups = Array.from(map.values());
 
   for (const g of groups) {
-    g.novo.sort((a, b) => (a.size ?? "").localeCompare(b.size ?? ""));
-    g.higienizado.sort((a, b) => (a.size ?? "").localeCompare(b.size ?? ""));
+    g.novo.sort((a, b) => sizeSortKey(a.size) - sizeSortKey(b.size));
+    g.higienizado.sort((a, b) => sizeSortKey(a.size) - sizeSortKey(b.size));
   }
 
   groups.sort((a, b) => {
