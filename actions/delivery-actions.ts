@@ -107,3 +107,35 @@ export async function updateDeliveryStatus(id: string, status: string) {
     return { success: false as const, error: "Erro ao atualizar status" };
   }
 }
+
+export async function deleteDelivery(id: string) {
+  try {
+    const delivery = await prisma.delivery.findUnique({
+      where: { id },
+      include: { items: { select: { productId: true, quantity: true } } },
+    });
+
+    if (!delivery) {
+      return { success: false as const, error: "Entrega não encontrada" };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      for (const item of delivery.items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stockQuantity: { increment: item.quantity } },
+        });
+      }
+
+      await tx.delivery.delete({ where: { id } });
+    });
+
+    revalidatePath("/deliveries");
+    revalidatePath("/stock");
+    revalidatePath("/reports");
+    return { success: true as const };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Erro ao excluir entrega";
+    return { success: false as const, error: msg };
+  }
+}

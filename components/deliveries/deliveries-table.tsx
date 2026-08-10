@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { ChevronUp, ChevronDown, ChevronsUpDown, Building2, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { ChevronUp, ChevronDown, ChevronsUpDown, Building2, Clock, CheckCircle2, XCircle, Trash2 } from "lucide-react";
 import { formatDateTime, formatDeliveryStatus } from "@/lib/utils";
+import { deleteDelivery } from "@/actions/delivery-actions";
 
 type SortDirection = "asc" | "desc";
 
@@ -38,12 +39,32 @@ function StatusBadge({ status }: { status: string }) {
 
 export function DeliveriesTable({ deliveries }: { deliveries: Delivery[] }) {
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "deliveredAt", direction: "desc" });
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleSort = useCallback((key: string) => {
     setSortConfig((prev) => ({
       key,
       direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
     }));
+  }, []);
+
+  const handleDelete = useCallback(async (delivery: Delivery) => {
+    const workerName = delivery.worker.name;
+    const itemCount = delivery.items.length;
+    const confirmed = window.confirm(
+      `Excluir entrega para "${workerName}"?\n\nIsso irá:\n• Devolver ${itemCount} item(ns) ao estoque\n• Remover do Histórico de Entregas\n• Remover da Ficha de EPI e do Termo de Entrega`
+    );
+    if (!confirmed) return;
+
+    setDeletingId(delivery.id);
+    try {
+      const result = await deleteDelivery(delivery.id);
+      if (!result.success) {
+        alert(result.error);
+      }
+    } finally {
+      setDeletingId(null);
+    }
   }, []);
 
   const sortedDeliveries = useMemo(() => {
@@ -162,14 +183,25 @@ export function DeliveriesTable({ deliveries }: { deliveries: Delivery[] }) {
                 <StatusBadge status={delivery.status} />
               </td>
               <td style={{ padding: "14px 24px" }}>
-                <a
-                  href={`/api/deliveries/${delivery.id}/pdf`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ display: "inline-flex", alignItems: "center", textDecoration: "none", padding: "6px 14px", fontSize: "12px", fontWeight: 700, borderRadius: "6px", border: "none", backgroundColor: "var(--yellow-primary)", color: "var(--navy-900)", cursor: "pointer", fontFamily: "inherit" }}
-                >
-                  Ver Ficha
-                </a>
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  <a
+                    href={`/api/deliveries/${delivery.id}/pdf`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: "inline-flex", alignItems: "center", textDecoration: "none", padding: "6px 14px", fontSize: "12px", fontWeight: 700, borderRadius: "6px", border: "none", backgroundColor: "var(--yellow-primary)", color: "var(--navy-900)", cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    Ver Ficha
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(delivery)}
+                    disabled={deletingId === delivery.id}
+                    style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "6px 12px", fontSize: "12px", fontWeight: 600, borderRadius: "6px", border: "1px solid #fecaca", backgroundColor: "#fef2f2", color: "#dc2626", cursor: deletingId === delivery.id ? "not-allowed" : "pointer", opacity: deletingId === delivery.id ? 0.5 : 1, fontFamily: "inherit" }}
+                  >
+                    <Trash2 size={12} />
+                    {deletingId === delivery.id ? "Excluindo..." : "Excluir"}
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
