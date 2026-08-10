@@ -210,7 +210,9 @@ export function DevolutionForm({ workers, products, onSuccess, onCancel }: Devol
                         {...f}
                       >
                         <option value="">— Selecione —</option>
-                        {products.map((p) => (
+                        {products
+                          .filter((p) => p.condition !== "NOVO")
+                          .map((p) => (
                           <option key={p.id} value={p.id}>
                             {p.name} {p.size ? `(${p.size})` : ""} — Est: {p.stockQuantity}
                           </option>
