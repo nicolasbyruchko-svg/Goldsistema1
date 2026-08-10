@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { getSpendingReport, getUsageReport, getHygieneRepairReport } from "@/actions/reports-actions";
+import { getSpendingReport, getUsageReport, getHygieneRepairReport, getStockReport } from "@/actions/reports-actions";
 import { ReportExportButtons } from "@/components/reports/export-buttons";
 import { PeriodSpendCard } from "@/components/reports/period-spend-card";
 import { UsageReportFilters } from "@/components/reports/usage-report-filters";
 import { UsageReportExportButtons } from "@/components/reports/usage-report-export-buttons";
 import { HygieneRepairReportExportButtons } from "@/components/reports/hygiene-repair-report-export-buttons";
-import { BarChart3, TrendingUp, Package, ClipboardList, Building2, User, Tag, ClipboardCheck, Droplets, Wrench } from "lucide-react";
+import { StockReportCards } from "@/components/reports/stock-report-cards";
+import { StockReportExportButtons } from "@/components/reports/stock-report-export-buttons";
+import { BarChart3, TrendingUp, Package, ClipboardList, Building2, User, Tag, ClipboardCheck, Droplets, Wrench, Boxes } from "lucide-react";
 import { formatCurrency, formatNumber, formatDate, formatReason } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -34,7 +36,7 @@ export default async function ReportsPage({
   const usageFromStr = typeof sp.usageFrom === "string" ? sp.usageFrom : "";
   const usageToStr = typeof sp.usageTo === "string" ? sp.usageTo : "";
 
-  const [report, usageReport, hygieneRepairReport] = await Promise.all([
+  const [report, usageReport, hygieneRepairReport, stockReport] = await Promise.all([
     getSpendingReport({
       from: fromStr ? new Date(fromStr + "T00:00:00") : undefined,
       to: toStr ? new Date(toStr + "T23:59:59") : undefined,
@@ -47,6 +49,7 @@ export default async function ReportsPage({
       to: usageToStr ? new Date(usageToStr + "T23:59:59") : undefined,
     }),
     getHygieneRepairReport(),
+    getStockReport(),
   ]);
   const { totals, byProject, byWorker, byReason } = report;
 
@@ -599,6 +602,55 @@ export default async function ReportsPage({
           <div style={{ backgroundColor: "#fff", borderRadius: "14px", boxShadow: "0 1px 3px rgba(0,0,0,0.07)", border: "1px solid var(--gray-200)", padding: "40px 24px", textAlign: "center", color: "var(--gray-400)", fontSize: "13px" }}>
             Nenhum item em higienização ou reparo no momento.
           </div>
+        )}
+      </div>
+
+      {/* Relatório de Estoque */}
+      <div style={{ marginTop: "32px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", marginBottom: "16px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{ width: "36px", height: "36px", borderRadius: "9px", backgroundColor: "#d1fae5", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Boxes size={18} style={{ color: "#059669" }} />
+            </div>
+            <h2 style={{ fontSize: "18px", fontWeight: 700, color: "var(--navy-900)", margin: 0 }}>
+              Relatório de Estoque
+            </h2>
+          </div>
+          <StockReportExportButtons report={stockReport} />
+        </div>
+
+        <p style={{ fontSize: "13px", color: "var(--gray-500)", margin: "0 0 16px 0" }}>
+          Posição atual do estoque de EPIs e uniformes. Itens com estoque abaixo do mínimo são destacados.
+        </p>
+
+        {/* Stats */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "12px", marginBottom: "16px" }}>
+          {[
+            { label: "Produtos", value: formatNumber(stockReport.totals.totalProducts), color: "var(--navy-900)", bg: "#fff" },
+            { label: "Itens em Estoque", value: formatNumber(stockReport.totals.totalItems), color: "#0284c7", bg: "#e0f2fe" },
+            { label: "Valor Total", value: formatCurrency(stockReport.totals.totalValue), color: "#059669", bg: "#d1fae5" },
+            { label: "EPIs", value: formatNumber(stockReport.totals.totalEpi), color: "var(--navy-800)", bg: "rgba(25,55,109,0.08)" },
+            { label: "Uniformes", value: formatNumber(stockReport.totals.totalUniform), color: "#0284c7", bg: "#e0f2fe" },
+            { label: "Novos", value: formatNumber(stockReport.totals.totalNovo), color: "#059669", bg: "#d1fae5" },
+            { label: "Higienizados", value: formatNumber(stockReport.totals.totalHigienizado), color: "#4338ca", bg: "#e0e7ff" },
+            { label: "Estoque Crítico", value: formatNumber(stockReport.totals.criticalCount), color: "#dc2626", bg: "#fee2e2" },
+          ].map((s) => (
+            <div key={s.label} style={{ backgroundColor: "#fff", borderRadius: "10px", padding: "16px 20px", boxShadow: "0 1px 3px rgba(0,0,0,0.07)", border: "1px solid var(--gray-200)" }}>
+              <span style={{ fontSize: "12px", color: "var(--gray-500)", fontWeight: 500 }}>{s.label}</span>
+              <span style={{ display: "block", fontSize: "22px", fontWeight: 800, color: s.color, lineHeight: 1.1, marginTop: "2px" }}>
+                {s.value}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Cards de Estoque */}
+        {stockReport.rows.length === 0 ? (
+          <div style={{ backgroundColor: "#fff", borderRadius: "14px", boxShadow: "0 1px 3px rgba(0,0,0,0.07)", border: "1px solid var(--gray-200)", padding: "40px 24px", textAlign: "center", color: "var(--gray-400)", fontSize: "13px" }}>
+            Nenhum produto cadastrado no estoque.
+          </div>
+        ) : (
+          <StockReportCards report={stockReport} />
         )}
       </div>
     </div>

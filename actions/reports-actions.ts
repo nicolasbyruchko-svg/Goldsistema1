@@ -417,3 +417,79 @@ export async function getHygieneRepairReport(): Promise<HygieneRepairReport> {
     repairRows,
   };
 }
+
+export type StockReportRow = {
+  id: string;
+  name: string;
+  sku: string;
+  type: string;
+  condition: string;
+  size: string | null;
+  caNumber: string | null;
+  caValidity: Date | null;
+  unitCost: number;
+  supplier: string | null;
+  stockQuantity: number;
+  minStock: number;
+  totalValue: number;
+  isCritical: boolean;
+};
+
+export type StockReport = {
+  generatedAt: Date;
+  totals: {
+    totalProducts: number;
+    totalItems: number;
+    totalValue: number;
+    totalEpi: number;
+    totalUniform: number;
+    totalNovo: number;
+    totalHigienizado: number;
+    criticalCount: number;
+  };
+  rows: StockReportRow[];
+};
+
+export async function getStockReport(): Promise<StockReport> {
+  const now = new Date();
+
+  const products = await prisma.product.findMany({
+    where: { archived: false },
+    orderBy: [{ type: "asc" }, { name: "asc" }],
+  });
+
+  const rows: StockReportRow[] = products.map((p) => {
+    const unitCost = p.unitCost != null ? Number(p.unitCost) : 0;
+    return {
+      id: p.id,
+      name: p.name,
+      sku: p.sku,
+      type: p.type,
+      condition: p.condition,
+      size: p.size,
+      caNumber: p.caNumber,
+      caValidity: p.caValidity,
+      unitCost,
+      supplier: p.supplier,
+      stockQuantity: p.stockQuantity,
+      minStock: p.minStock,
+      totalValue: unitCost * p.stockQuantity,
+      isCritical: p.stockQuantity <= p.minStock,
+    };
+  });
+
+  const totalProducts = rows.length;
+  const totalItems = rows.reduce((s, r) => s + r.stockQuantity, 0);
+  const totalValue = rows.reduce((s, r) => s + r.totalValue, 0);
+  const totalEpi = rows.filter((r) => r.type === "EPI").reduce((s, r) => s + r.stockQuantity, 0);
+  const totalUniform = rows.filter((r) => r.type === "UNIFORM").reduce((s, r) => s + r.stockQuantity, 0);
+  const totalNovo = rows.filter((r) => r.condition === "NOVO").reduce((s, r) => s + r.stockQuantity, 0);
+  const totalHigienizado = rows.filter((r) => r.condition === "HIGIENIZADO").reduce((s, r) => s + r.stockQuantity, 0);
+  const criticalCount = rows.filter((r) => r.isCritical).length;
+
+  return {
+    generatedAt: now,
+    totals: { totalProducts, totalItems, totalValue, totalEpi, totalUniform, totalNovo, totalHigienizado, criticalCount },
+    rows,
+  };
+}
