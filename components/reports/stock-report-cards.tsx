@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Printer, ShieldCheck, Shirt, AlertTriangle, Columns, Columns2, Columns3, Columns4 } from "lucide-react";
+import { useMemo, useState, useCallback, useEffect, useSyncExternalStore } from "react";
+import { Printer, ShieldCheck, Shirt, AlertTriangle } from "lucide-react";
 import type { StockReport } from "@/actions/reports-actions";
 import { formatCurrency, formatDate } from "@/lib/utils";
+
+const STORAGE_KEY = "stock-report-order";
 
 const SIZE_ORDER = [
   "XXS", "XS", "PP", "P", "M", "G", "GG", "XGG", "EXG",
@@ -65,19 +67,42 @@ function SizeGrid({ entries, color }: { entries: SizeEntry[]; color: string }) {
   );
 }
 
-function StockCard({ group }: { group: GroupedProduct }) {
+function StockCard({
+  group,
+  isDragging,
+  onDragStart,
+  onDragOver,
+  onDragEnd,
+  onDrop,
+}: {
+  group: GroupedProduct;
+  isDragging: boolean;
+  onDragStart: (e: React.DragEvent, key: string) => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragEnd: () => void;
+  onDrop: (e: React.DragEvent, key: string) => void;
+}) {
   const isEpi = group.type === "EPI";
   const totalQty = group.novoTotal + group.higienizadoTotal;
   const isCritical = totalQty <= group.minStock;
 
   return (
     <div
+      draggable
+      onDragStart={(e) => onDragStart(e, group.key)}
+      onDragOver={onDragOver}
+      onDragEnd={onDragEnd}
+      onDrop={(e) => onDrop(e, group.key)}
       style={{
         backgroundColor: "#fff",
         borderRadius: "12px",
         border: isCritical ? "1px solid #fde68a" : "1px solid var(--gray-200)",
         overflow: "hidden",
         breakInside: "avoid",
+        cursor: "grab",
+        opacity: isDragging ? 0.4 : 1,
+        transform: isDragging ? "scale(0.98)" : "none",
+        transition: "opacity 0.15s, transform 0.15s",
       }}
     >
       {/* Header */}
@@ -90,9 +115,21 @@ function StockCard({ group }: { group: GroupedProduct }) {
           alignItems: "center",
           justifyContent: "space-between",
           gap: "8px",
+          userSelect: "none",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+          <span
+            style={{
+              flexShrink: 0,
+              fontSize: "14px",
+              color: "var(--gray-300)",
+              cursor: "grab",
+            }}
+            title="Arrastar para reordenar"
+          >
+            ⠿
+          </span>
           <span
             style={{
               display: "inline-flex",
@@ -138,7 +175,6 @@ function StockCard({ group }: { group: GroupedProduct }) {
 
       {/* Body */}
       <div style={{ padding: "12px 16px" }}>
-        {/* Novo / Higienizado grids side by side */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "12px" }}>
           <div
             style={{
@@ -175,7 +211,6 @@ function StockCard({ group }: { group: GroupedProduct }) {
           </div>
         </div>
 
-        {/* Details */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", fontSize: "11px", color: "var(--gray-500)" }}>
           {group.caNumber && (
             <span>
@@ -237,9 +272,7 @@ function groupRows(rows: StockReport["rows"]): GroupedProduct[] {
       });
     }
     const group = map.get(key)!;
-
     const sizeEntry: SizeEntry = { size: row.size, qty: row.stockQuantity, value: row.totalValue };
-
     if (row.condition === "NOVO") {
       group.novo.push(sizeEntry);
       group.novoTotal += row.stockQuantity;
@@ -250,42 +283,113 @@ function groupRows(rows: StockReport["rows"]): GroupedProduct[] {
   }
 
   const groups = Array.from(map.values());
-
   for (const g of groups) {
     g.novo.sort((a, b) => sizeSortKey(a.size) - sizeSortKey(b.size));
     g.higienizado.sort((a, b) => sizeSortKey(a.size) - sizeSortKey(b.size));
   }
-
   groups.sort((a, b) => {
     if (a.type !== b.type) return a.type === "EPI" ? -1 : 1;
     return a.name.localeCompare(b.name, "pt-BR");
   });
-
   return groups;
 }
 
+function subscribeToOrderChange() {
+  return () => {};
+}
+
+let cachedStoredOrder: string[] | null = null;
+function getStoredOrder(): string[] {
+  if (cachedStoredOrder !== null) return cachedStoredOrder;
+  let order: string[] = [];
+  if (typeof window !== "undefined") {
+    try {
+      order = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") ?? [];
+    } catch {
+      order = [];
+    }
+  }
+  cachedStoredOrder = order;
+  return order;
+}
+
+function deriveOrder(groups: GroupedProduct[], storedOrder: string[]): GroupedProduct[] {
+  const byKey = new Map(groups.map((g) => [g.key, g]));
+  const restored = storedOrder.map((key) => byKey.get(key)).filter((g): g is GroupedProduct => !!g);
+  const newGroups = groups.filter((g) => !storedOrder.includes(g.key));
+  return [...restored, ...newGroups];
+}
+
 export function StockReportCards({ report }: { report: StockReport }) {
-  const [cols, setCols] = useState<2 | 3 | 4>(3);
+  const storedOrder = useSyncExternalStore(subscribeToOrderChange, getStoredOrder, () => []);
+  const [sessionGroups, setSessionGroups] = useState<GroupedProduct[] | null>(null);
+  const [draggingKey, setDraggingKey] = useState<string | null>(null);
+  const [overKey, setOverKey] = useState<string | null>(null);
+  const [prevReport, setPrevReport] = useState(report);
+
+  if (prevReport !== report) {
+    setPrevReport(report);
+    setSessionGroups(null);
+  }
+
+  const allGroups = useMemo(() => groupRows(report.rows), [report]);
+  const orderedGroups = useMemo(() => deriveOrder(allGroups, storedOrder), [allGroups, storedOrder]);
+
+  useEffect(() => {
+    if (sessionGroups && sessionGroups.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionGroups.map((g) => g.key)));
+    }
+  }, [sessionGroups]);
+
+  const handleDragStart = useCallback((e: React.DragEvent, key: string) => {
+    setDraggingKey(key);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", key);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }, []);
+
+  const handleDragEnter = useCallback((key: string) => {
+    setOverKey(key);
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    setDraggingKey(null);
+    setOverKey(null);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, targetKey: string) => {
+    e.preventDefault();
+    const sourceKey = e.dataTransfer.getData("text/plain");
+    if (!sourceKey || sourceKey === targetKey) {
+      setDraggingKey(null);
+      setOverKey(null);
+      return;
+    }
+
+    setSessionGroups((prev) => {
+      const base = prev ?? orderedGroups;
+      const items = [...base];
+      const srcIdx = items.findIndex((g) => g.key === sourceKey);
+      const tgtIdx = items.findIndex((g) => g.key === targetKey);
+      if (srcIdx === -1 || tgtIdx === -1) return prev;
+      const [moved] = items.splice(srcIdx, 1);
+      items.splice(tgtIdx, 0, moved);
+      return items;
+    });
+
+    setDraggingKey(null);
+    setOverKey(null);
+  }, [orderedGroups]);
+
+  const displayGroups = sessionGroups ?? orderedGroups;
+
   const handlePrint = () => {
     window.print();
   };
-
-  const groups = groupRows(report.rows);
-
-  const colBtnStyle = (active: boolean) => ({
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "32px",
-    height: "32px",
-    borderRadius: "6px",
-    border: active ? "2px solid var(--navy-800)" : "1px solid var(--gray-200)",
-    backgroundColor: active ? "var(--navy-800)" : "#fff",
-    color: active ? "#fff" : "var(--gray-500)",
-    cursor: "pointer" as const,
-    padding: 0,
-    transition: "all 0.15s",
-  });
 
   return (
     <div>
@@ -295,12 +399,12 @@ export function StockReportCards({ report }: { report: StockReport }) {
           .stock-report-print, .stock-report-print * { visibility: visible !important; }
           .stock-report-print { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; }
           .no-print { display: none !important; }
-          .stock-card-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
+          .stock-card-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 10px !important; }
           .stock-card-grid > div { break-inside: avoid; }
         }
       `}</style>
 
-      <div className="no-print" style={{ marginBottom: "16px", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+      <div className="no-print" style={{ marginBottom: "16px" }}>
         <button
           type="button"
           onClick={handlePrint}
@@ -321,19 +425,6 @@ export function StockReportCards({ report }: { report: StockReport }) {
         >
           <Printer size={16} /> Imprimir
         </button>
-
-        <div style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px", borderRadius: "8px", border: "1px solid var(--gray-200)", backgroundColor: "#fff" }}>
-          <span style={{ fontSize: "11px", color: "var(--gray-400)", fontWeight: 500, padding: "0 6px" }}>Colunas:</span>
-          <button type="button" onClick={() => setCols(2)} style={colBtnStyle(cols === 2)} title="2 colunas">
-            <Columns2 size={14} />
-          </button>
-          <button type="button" onClick={() => setCols(3)} style={colBtnStyle(cols === 3)} title="3 colunas">
-            <Columns3 size={14} />
-          </button>
-          <button type="button" onClick={() => setCols(4)} style={colBtnStyle(cols === 4)} title="4 colunas">
-            <Columns4 size={14} />
-          </button>
-        </div>
       </div>
 
       <div className="stock-report-print">
@@ -341,12 +432,30 @@ export function StockReportCards({ report }: { report: StockReport }) {
           className="stock-card-grid"
           style={{
             display: "grid",
-            gridTemplateColumns: `repeat(${cols}, 1fr)`,
+            gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
             gap: "16px",
           }}
         >
-          {groups.map((group) => (
-            <StockCard key={group.key} group={group} />
+          {displayGroups.map((group) => (
+            <div
+              key={group.key}
+              onDragEnter={() => handleDragEnter(group.key)}
+              style={{
+                outline: overKey === group.key && draggingKey !== group.key ? "2px dashed #0284c7" : "none",
+                outlineOffset: "2px",
+                borderRadius: "14px",
+                transition: "outline 0.15s",
+              }}
+            >
+              <StockCard
+                group={group}
+                isDragging={draggingKey === group.key}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragEnd={handleDragEnd}
+                onDrop={handleDrop}
+              />
+            </div>
           ))}
         </div>
       </div>
