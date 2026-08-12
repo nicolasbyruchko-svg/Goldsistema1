@@ -6,7 +6,7 @@ export const deliveryItemSchema = z.object({
     .number({ invalid_type_error: "Informe a quantidade" })
     .int("Deve ser inteiro")
     .min(1, "Mínimo 1"),
-  reason: z.enum(["FIRST_DELIVERY", "REPLACEMENT_WEAR", "REPLACEMENT_LOSS"], {
+  reason: z.enum(["FIRST_DELIVERY", "REPLACEMENT_WEAR", "REPLACEMENT_LOSS", "RETURN_TO_WORK"], {
     required_error: "Selecione o motivo",
   }),
 });

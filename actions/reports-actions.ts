@@ -73,7 +73,7 @@ export type UsageReport = {
   projects: { id: string; name: string }[];
 };
 
-const REASON_KEYS = ["FIRST_DELIVERY", "REPLACEMENT_WEAR", "REPLACEMENT_LOSS"];
+const REASON_KEYS = ["FIRST_DELIVERY", "REPLACEMENT_WEAR", "REPLACEMENT_LOSS", "RETURN_TO_WORK"];
 
 /**
  * Relatório de gastos com EPIs/uniformes a partir do custo capturado no

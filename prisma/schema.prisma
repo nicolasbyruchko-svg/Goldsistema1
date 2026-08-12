@@ -100,7 +100,7 @@ model DeliveryItem {
   productId          String
   product            Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
   quantity           Int
-  reason             String   @default("FIRST_DELIVERY") // FIRST_DELIVERY, REPLACEMENT_WEAR, REPLACEMENT_LOSS
+  reason             String   @default("FIRST_DELIVERY") // FIRST_DELIVERY, REPLACEMENT_WEAR, REPLACEMENT_LOSS, RETURN_TO_WORK
   unitCostAtDelivery Decimal? @db.Decimal(10, 2)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt

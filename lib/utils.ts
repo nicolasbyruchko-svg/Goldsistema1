@@ -37,12 +37,13 @@ export function formatDateTime(date: Date | string | null | undefined): string {
 
 /** Label legível para o motivo da entrega */
 export function formatReason(
-  reason: "FIRST_DELIVERY" | "REPLACEMENT_WEAR" | "REPLACEMENT_LOSS" | string
+  reason: "FIRST_DELIVERY" | "REPLACEMENT_WEAR" | "REPLACEMENT_LOSS" | "RETURN_TO_WORK" | string
 ): string {
   const map: Record<string, string> = {
     FIRST_DELIVERY: "Primeira Entrega",
     REPLACEMENT_WEAR: "Reposição por Desgaste",
     REPLACEMENT_LOSS: "Reposição por Perda/Extravio",
+    RETURN_TO_WORK: "Retorno ao trabalho",
   };
   return map[reason] ?? reason;
 }

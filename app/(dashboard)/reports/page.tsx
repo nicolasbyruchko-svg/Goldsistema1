@@ -358,8 +358,8 @@ export default async function ReportsPage({
                             borderRadius: "999px",
                             fontSize: "11px",
                             fontWeight: 600,
-                            backgroundColor: row.reason === "FIRST_DELIVERY" ? "#d1fae5" : row.reason === "REPLACEMENT_LOSS" ? "#fef3c7" : "#ede9fe",
-                            color: row.reason === "FIRST_DELIVERY" ? "#059669" : row.reason === "REPLACEMENT_LOSS" ? "#92400e" : "#7c3aed",
+                            backgroundColor: row.reason === "FIRST_DELIVERY" ? "#d1fae5" : row.reason === "REPLACEMENT_LOSS" ? "#fef3c7" : row.reason === "RETURN_TO_WORK" ? "#ffe4e6" : "#ede9fe",
+                            color: row.reason === "FIRST_DELIVERY" ? "#059669" : row.reason === "REPLACEMENT_LOSS" ? "#92400e" : row.reason === "RETURN_TO_WORK" ? "#e11d48" : "#7c3aed",
                           }}
                         >
                           {formatReason(row.reason)}
