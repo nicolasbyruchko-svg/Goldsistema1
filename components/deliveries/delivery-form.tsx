@@ -26,6 +26,7 @@ const REASON_LABELS: Record<string, string> = {
   REPLACEMENT_WEAR: "Reposição por Desgaste",
   REPLACEMENT_LOSS: "Reposição por Perda/Extravio",
   RETURN_TO_WORK: "Retorno ao trabalho",
+  SIZE_EXCHANGE: "Troca por tamanho",
 };
 
 export function DeliveryForm({ workers, products, onSuccess, onCancel }: DeliveryFormProps) {
