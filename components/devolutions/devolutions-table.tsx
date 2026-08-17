@@ -25,11 +25,33 @@ const CONDITION_CONFIG: Record<string, { label: string; bg: string; color: strin
   UNUSABLE: { label: "Não utilizável", bg: "#fee2e2", color: "#dc2626" },
 };
 
-const STATUS_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
-  PENDING: { label: "Higienização", bg: "#fef9c3", color: "#92400e" },
-  PARTIAL: { label: "Parcial", bg: "#e0e7ff", color: "#4338ca" },
-  APPROVED: { label: "Ok", bg: "#dcfce7", color: "#15803d" },
+type DevolutionStage = "OK" | "HIGIENIZACAO" | "REPARO";
+
+const STAGE_RANK: Record<DevolutionStage, number> = {
+  HIGIENIZACAO: 0,
+  REPARO: 1,
+  OK: 2,
 };
+
+const STAGE_CONFIG: Record<DevolutionStage, { label: string; bg: string; color: string }> = {
+  HIGIENIZACAO: { label: "Higienização", bg: "#fef9c3", color: "#92400e" },
+  REPARO: { label: "Reparo", bg: "#e0e7ff", color: "#4338ca" },
+  OK: { label: "Ok", bg: "#dcfce7", color: "#15803d" },
+};
+
+function getDevolutionStage(devolution: Devolution): DevolutionStage {
+  let hasPending = false;
+  let hasRepair = false;
+  for (const item of devolution.items) {
+    const remaining = item.quantity - (item.approvedQty ?? 0) - item.rejectedQty - item.repairedQty;
+    if (remaining <= 0) continue;
+    if (item.condition === "SEWING") hasRepair = true;
+    else hasPending = true;
+  }
+  if (hasRepair) return "REPARO";
+  if (hasPending) return "HIGIENIZACAO";
+  return "OK";
+}
 
 function ConditionBadge({ condition }: { condition: string }) {
   const style = CONDITION_CONFIG[condition] ?? { label: condition, bg: "#f3f4f6", color: "#6b7280" };
@@ -40,9 +62,9 @@ function ConditionBadge({ condition }: { condition: string }) {
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const style = STATUS_CONFIG[status] ?? { label: status, bg: "#f3f4f6", color: "#6b7280" };
-  const Icon = status === "APPROVED" ? CheckCircle2 : status === "PARTIAL" ? ClipboardCheck : Clock;
+function StatusBadge({ stage }: { stage: DevolutionStage }) {
+  const style = STAGE_CONFIG[stage];
+  const Icon = stage === "OK" ? CheckCircle2 : stage === "REPARO" ? Sofa : Clock;
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 10px", borderRadius: "999px", fontSize: "11px", fontWeight: 600, backgroundColor: style.bg, color: style.color, whiteSpace: "nowrap" }}>
       <Icon size={12} />
@@ -106,8 +128,8 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
         aVal = a.items.reduce((s, i) => s + (i.quantity - (i.approvedQty ?? 0) - (i.rejectedQty ?? 0)), 0);
         bVal = b.items.reduce((s, i) => s + (i.quantity - (i.approvedQty ?? 0) - (i.rejectedQty ?? 0)), 0);
       } else if (sortConfig.key === "status") {
-        aVal = a.status;
-        bVal = b.status;
+        aVal = STAGE_RANK[getDevolutionStage(a)];
+        bVal = STAGE_RANK[getDevolutionStage(b)];
       } else {
         aVal = a[sortConfig.key as keyof Devolution];
         bVal = b[sortConfig.key as keyof Devolution];
@@ -120,7 +142,7 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
       let comparison = 0;
       if (sortConfig.key === "devolvedAt") {
         comparison = new Date(aVal as string).getTime() - new Date(bVal as string).getTime();
-      } else if (sortConfig.key === "goodQty" || sortConfig.key === "badQty" || sortConfig.key === "pendingQty") {
+      } else if (sortConfig.key === "goodQty" || sortConfig.key === "badQty" || sortConfig.key === "pendingQty" || sortConfig.key === "status") {
         comparison = Number(aVal) - Number(bVal);
       } else {
         comparison = String(aVal).localeCompare(String(bVal), "pt-BR", { sensitivity: "base" });
@@ -180,6 +202,7 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
               const approvedQty = devolution.items.reduce((s, i) => s + (i.approvedQty ?? 0), 0);
               const rejectedQty = devolution.items.reduce((s, i) => s + (i.rejectedQty ?? 0), 0);
               const pendingQty = devolution.items.reduce((s, i) => s + (i.quantity - (i.approvedQty ?? 0) - (i.rejectedQty ?? 0)), 0);
+              const stage = getDevolutionStage(devolution);
               const isPending = devolution.status === "PENDING";
               const isPartial = devolution.status === "PARTIAL";
               const canApprove = isPending || isPartial;
@@ -188,7 +211,7 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
                   key={devolution.id}
                   style={{
                     borderBottom: idx < sortedDevolutions.length - 1 ? "1px solid var(--gray-100)" : "none",
-                    backgroundColor: isPending ? "#fffbeb" : isPartial ? "#eef2ff" : "transparent",
+                    backgroundColor: stage === "HIGIENIZACAO" ? "#fffbeb" : stage === "REPARO" ? "#eef2ff" : "transparent",
                   }}
                 >
                   <td style={{ padding: "14px 24px" }}>
@@ -219,7 +242,7 @@ export function DevolutionsTable({ devolutions }: { devolutions: Devolution[] })
                     {devolution.createdBy?.name ?? <span style={{ color: "var(--gray-300)" }}>—</span>}
                   </td>
                   <td style={{ padding: "14px 24px" }}>
-                    <StatusBadge status={devolution.status} />
+                    <StatusBadge stage={stage} />
                     {devolution.approvedBy && (
                       <span style={{ display: "block", fontSize: "11px", color: "var(--gray-400)", marginTop: "4px", whiteSpace: "nowrap" }}>
                         por {devolution.approvedBy.name}
